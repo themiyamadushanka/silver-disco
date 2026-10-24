@@ -6,7 +6,7 @@ export default function GestureGuide() {
   const [activeFilter, setActiveFilter] = useState("all");
 
   const guideItems = [
-    // --- TWO-HANDED SIGNS (17) ---
+    // --- 7 DISTINCT TWO-HANDED SIGNS ---
     {
       sign: "🆘 Help (Two-Handed)",
       speech: '"I need help please"',
@@ -16,41 +16,25 @@ export default function GestureGuide() {
       isDual: true,
     },
     {
-      sign: "🛑 Stop / Chop (Two-Handed)",
-      speech: '"Stop right now"',
-      action: "Left flat palm horizontal; Right flat hand chopping down onto it",
-      meaning: "ASL sign for stop: sharp chop on open palm",
-      badge: "Directives",
-      isDual: true,
-    },
-    {
       sign: "⏱️ Time / Watch (Two-Handed)",
       speech: '"What time is it?"',
-      action: "Right index finger pointing and tapping the back of the left wrist",
+      action: "Right index finger tapping the back of the left wrist",
       meaning: "Universal sign for time: tapping wrist watch",
       badge: "Everyday",
       isDual: true,
     },
     {
-      sign: "❤️ Heart / Love (Two-Handed)",
-      speech: '"With all my heart, I love you"',
-      action: "Both index fingers and thumbs curved meeting into a heart shape",
-      meaning: "Two-handed heart shape expressing deep love",
-      badge: "Emotion",
-      isDual: true,
-    },
-    {
-      sign: "🤲 More (Two-Handed)",
-      speech: '"More please"',
-      action: "Both hands cupped/pinched fingertips touching at chest",
-      meaning: "ASL sign for more: fingertips meeting at center",
-      badge: "Basics",
+      sign: "🙏 Thank You / Respect (Two-Handed)",
+      speech: '"Thank you, respect"',
+      action: "Both flat hands pressed vertically together palm-to-palm",
+      meaning: "Universal gratitude, Namaste, and deep respect",
+      badge: "Courtesy",
       isDual: true,
     },
     {
       sign: "📖 Book (Two-Handed)",
       speech: '"Open the book"',
-      action: "Both flat palms held together, then opened like pages",
+      action: "Both flat hands held together, opening outward like pages",
       meaning: "ASL sign for book: opening palms outward",
       badge: "Education",
       isDual: true,
@@ -72,131 +56,43 @@ export default function GestureGuide() {
       isDual: true,
     },
     {
-      sign: "🟰 Same / Equal (Two-Handed)",
-      speech: '"It is the same, equal"',
-      action: "Both index fingers pointing horizontally towards each other",
-      meaning: "ASL sign for same: index fingers held parallel",
-      badge: "Concepts",
-      isDual: true,
-    },
-    {
-      sign: "👨‍👩‍👧 Family (Two-Handed)",
-      speech: '"Family"',
-      action: "Both hands in 'OK' pinch shape touching at fingertips",
-      meaning: "ASL sign for family: 'F' handshapes circling and touching",
-      badge: "Social",
-      isDual: true,
-    },
-    {
-      sign: "🙏 Thank You / Respect (Two-Handed)",
-      speech: '"Thank you, respect"',
-      action: "Both flat hands pressed vertically together palm-to-palm",
-      meaning: "Universal gratitude, Namaste, and deep respect",
-      badge: "Courtesy",
-      isDual: true,
-    },
-    {
-      sign: "🤞 Friend (Two-Handed)",
-      speech: '"My good friend"',
-      action: "Both index fingers hooked and interlinked together",
-      meaning: "ASL sign for friendship & bond",
-      badge: "Social",
-      isDual: true,
-    },
-    {
-      sign: "👐 Open / Welcome (Two-Handed)",
-      speech: '"Open wide, welcome"',
-      action: "Both flat hands held wide apart welcoming outward",
-      meaning: "Open wide, welcome, or broad view",
-      badge: "Action",
-      isDual: true,
-    },
-    {
-      sign: "👏 Deaf Applause (Two-Handed)",
-      speech: '"Congratulations! Bravo!"',
-      action: "Both hands raised high at head level, waving wrists",
-      meaning: "Deaf community applause and celebration",
-      badge: "Celebration",
-      isDual: true,
-    },
-    {
-      sign: "👍👍 Awesome / Great (Two-Handed)",
-      speech: '"Awesome, great job!"',
-      action: "Double thumbs-up with both hands simultaneously",
-      meaning: "Strong affirmation & double approval",
-      badge: "Affirmation",
-      isDual: true,
-    },
-    {
-      sign: "✌️✌️ Double Peace (Two-Handed)",
-      speech: '"Peace and happiness"',
-      action: "Both hands showing Peace sign (V-shape) together",
-      meaning: "Double peace, celebration, or joy",
-      badge: "Joy",
-      isDual: true,
-    },
-    {
-      sign: "🤟🤟 Lots of Love (Two-Handed)",
-      speech: '"Sending you so much love!"',
-      action: "Both hands showing I Love You sign (Thumb+Index+Pinky)",
-      meaning: "Deep love and affection with both hands",
-      badge: "Emotion",
+      sign: "🤲 More (Two-Handed)",
+      speech: '"More please"',
+      action: "Both hands with cupped/pinched fingertips touching at chest",
+      meaning: "ASL sign for more: fingertips meeting at center",
+      badge: "Basics",
       isDual: true,
     },
 
-    // --- SINGLE-HAND SIGNS (13) ---
+    // --- 10 DISTINCT SINGLE-HAND SIGNS ---
     {
-      sign: "🖐️ Open Palm / Wave",
+      sign: "🖐️ Hello / Open Hand",
       speech: '"Hello! Greetings!"',
       action: "Extend all 5 fingers upright facing the camera",
-      meaning: "Universal friendly greeting",
+      meaning: "Universal friendly greeting or number 5",
       badge: "Greeting",
       isDual: false,
     },
     {
-      sign: "💧 Water (ASL W)",
-      speech: '"I would like some water please"',
-      action: "Extend Index, Middle, Ring (Letter W) near your chin",
-      meaning: "ASL sign for water: tapping letter W to chin",
-      badge: "Needs",
+      sign: "✊ Closed Fist / Stop",
+      speech: '"Stop or wait"',
+      action: "Curl all fingers into a firm fist (0 fingers extended)",
+      meaning: "Stop, wait, or strength",
+      badge: "Control",
       isDual: false,
     },
     {
-      sign: "🤫 Be Quiet / Shh",
-      speech: '"Please be quiet"',
-      action: "Extend only Index finger vertically near your mouth",
-      meaning: "Universal gesture for silence and listening",
-      badge: "Social",
-      isDual: false,
-    },
-    {
-      sign: "🤏 A Little Bit",
-      speech: '"Just a little bit"',
-      action: "Pinch thumb and index close together, other fingers relaxed",
-      meaning: "Expressing a small amount or pinch",
-      badge: "Everyday",
-      isDual: false,
-    },
-    {
-      sign: "🤟 I Love You",
-      speech: '"I love you"',
-      action: "Extend Thumb, Index, and Pinky; fold Middle and Ring",
-      meaning: "ASL sign expressing care & affection",
-      badge: "ASL",
-      isDual: false,
-    },
-    {
-      sign: "👍 Thumbs Up",
+      sign: "👍 Thumbs Up / Yes",
       speech: '"Yes, good"',
-      action: "Extend thumb upwards with all fingers curled into a fist",
+      action: "Extend ONLY thumb upwards with fingers in a fist",
       meaning: "Agreement, affirmative, or yes",
       badge: "Everyday",
       isDual: false,
     },
     {
-      sign: "👎 Thumbs Down",
+      sign: "👎 Thumbs Down / No",
       speech: '"No, bad"',
-      action: "Point thumb downwards with all fingers curled into a fist",
+      action: "Point ONLY thumb downwards with fingers in a fist",
       meaning: "Disagreement, negative, or no",
       badge: "Everyday",
       isDual: false,
@@ -204,49 +100,49 @@ export default function GestureGuide() {
     {
       sign: "✌️ Peace / Victory",
       speech: '"Peace"',
-      action: "Extend Index and Middle in a V; fold Ring, Pinky, and Thumb",
+      action: "Extend ONLY Index and Middle in a V-shape",
       meaning: "Peace sign or number 2",
-      badge: "Number / Sign",
+      badge: "Universal",
+      isDual: false,
+    },
+    {
+      sign: "🤟 I Love You",
+      speech: '"I love you"',
+      action: "Extend Thumb, Index, and Pinky (fold Middle and Ring)",
+      meaning: "ASL sign expressing care & affection",
+      badge: "ASL",
       isDual: false,
     },
     {
       sign: "👌 OK / All Good",
       speech: '"Everything is okay"',
       action: "Pinch Thumb and Index tips together; keep other 3 fingers open",
-      meaning: "Everything is fine / ASL Letter F",
+      meaning: "Everything is fine / ASL letter F",
       badge: "Universal",
       isDual: false,
     },
     {
-      sign: "🤙 Call Me",
+      sign: "🤙 Call Me / Shaka",
       speech: '"Call me"',
-      action: "Extend Thumb and Pinky; keep Index, Middle, Ring curled",
-      meaning: "Phone call or relaxed Hawaiian Shaka greeting",
+      action: "Extend ONLY Thumb and Pinky; curl Index, Middle, Ring",
+      meaning: "Phone call or relaxed friendly greeting",
       badge: "Everyday",
-      isDual: false,
-    },
-    {
-      sign: "👆 Letter L / Angle",
-      speech: '"Letter L"',
-      action: "Extend Thumb and Index at a 90-degree right angle",
-      meaning: "ASL Letter L or pointer",
-      badge: "ASL Alphabet",
       isDual: false,
     },
     {
       sign: "👉 Pointing",
       speech: '"Look at this"',
-      action: "Extend only the Index finger; curl all other fingers",
+      action: "Extend ONLY Index finger; curl all other fingers",
       meaning: "Attention, direction, or number 1",
       badge: "Everyday",
       isDual: false,
     },
     {
-      sign: "✊ Closed Fist",
-      speech: '"Stop or wait"',
-      action: "Curl all fingers into a firm fist",
-      meaning: "Stop, wait, or ASL letter S",
-      badge: "Control",
+      sign: "🤘 Rock On",
+      speech: '"Rock on"',
+      action: "Extend ONLY Index and Pinky; hold down Middle and Ring",
+      meaning: "High energy, music gesture, or horns",
+      badge: "Expression",
       isDual: false,
     },
   ];
@@ -266,13 +162,13 @@ export default function GestureGuide() {
         <div className="card-title-group">
           <div className="card-icon">📖</div>
           <div>
-            <h2 className="card-title">Sign Language &amp; Gesture Dictionary</h2>
-            <p className="stat-label">Real-time recognized signs for both single and dual hands</p>
+            <h2 className="card-title">Distinct Sign Language Dictionary</h2>
+            <p className="stat-label">Curated, high-accuracy signs with mutually exclusive 3D biometric signatures</p>
           </div>
         </div>
         <div className="badge connected">
           <span className="badge-pulse"></span>
-          <span>{guideItems.length} Signs Recognized</span>
+          <span>{guideItems.length} Distinct Signs</span>
         </div>
       </div>
 
@@ -292,7 +188,7 @@ export default function GestureGuide() {
           style={{ padding: "6px 14px", fontSize: "0.82rem" }}
           onClick={() => setActiveFilter("dual")}
         >
-          👐 Both Hands Signs ({dualCount})
+          👐 Two-Handed Signs ({dualCount})
         </button>
         <button
           type="button"
@@ -320,7 +216,7 @@ export default function GestureGuide() {
               🗣️ Translates to: <strong>{item.speech}</strong>
             </div>
             <div className="guide-action-text" style={{ marginTop: "6px" }}>
-              📍 <strong>How to Sign:</strong> {item.action}
+              📍 <strong>Biometric Signature:</strong> {item.action}
             </div>
           </div>
         ))}
