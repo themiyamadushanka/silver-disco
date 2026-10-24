@@ -21,6 +21,7 @@ import {
   Square,
   BookOpen,
   Search,
+  Activity,
 } from "lucide-react";
 import { loadMediaPipeScripts, HAND_CONNECTIONS } from "@/lib/mediapipe";
 import { extractPositions, detectGesture, detectDualHandGesture } from "@/lib/gestureDetector";
@@ -107,6 +108,18 @@ const i18n = {
     speechOutputLabel: "Voice Output:",
     listenPreview: "Listen",
     activeNowBadge: "Active Now in Camera",
+    telemetryTitle: "Dual-Hand 3D Spatial Telemetry (X, Y, Z)",
+    telemetrySub: "Live biometric coordinate tracking and joint articulation matrices for both hands",
+    leftHandTitle: "Left Hand Tracking",
+    rightHandTitle: "Right Hand Tracking",
+    awaitingLeftHand: "Awaiting Left Hand in camera view...",
+    awaitingRightHand: "Awaiting Right Hand in camera view...",
+    jointCol: "Joint / Knuckle",
+    stateCol: "State",
+    depthCol: "Z (Depth)",
+    pinchMetric: "Pinch",
+    spanMetric: "Palm Span",
+    extMetric: "Extended",
   },
   si: {
     langName: "සිංහල / EN",
@@ -172,6 +185,18 @@ const i18n = {
     speechOutputLabel: "ප්‍රතිදාන කටහඬ:",
     listenPreview: "අසන්න",
     activeNowBadge: "කැමරාවෙන් හඳුනාගැනෙමින් පවතී",
+    telemetryTitle: "දෑතේ ත්‍රිමාන අවකාශීය ඛණ්ඩාංක (X, Y, Z)",
+    telemetrySub: "දෑතෙහි සන්ධි 21හි තත්‍ය කාලීන ත්‍රිමාන අවකාශීය පිහිටීම් සහ චලන දත්ත",
+    leftHandTitle: "වම් අතේ ඛණ්ඩාංක (Left Hand)",
+    rightHandTitle: "දකුණු අතේ ඛණ්ඩාංක (Right Hand)",
+    awaitingLeftHand: "වම් අත කැමරාව ඉදිරියට ගෙන එන්න...",
+    awaitingRightHand: "දකුණු අත කැමරාව ඉදිරියට ගෙන එන්න...",
+    jointCol: "සන්ධිය",
+    stateCol: "තත්ත්වය",
+    depthCol: "Z (ගැඹුර)",
+    pinchMetric: "ස්පර්ශය",
+    spanMetric: "අත්ල පළල",
+    extMetric: "දිගු කළ ඇඟිලි",
   },
 };
 
@@ -614,6 +639,64 @@ function CosmicLiveWallpaper({ theme, scrollY }) {
       aria-hidden="true"
     />
   );
+}
+
+// ============================================================================
+// DUAL-HAND 3D SPATIAL TELEMETRY RESOLVERS
+// ============================================================================
+function resolveDualHands(rawHands) {
+  if (!Array.isArray(rawHands) || rawHands.length === 0) {
+    return { leftHand: null, rightHand: null };
+  }
+
+  const hands = rawHands.filter((h) => h && typeof h === "object" && h.wrist);
+  if (hands.length === 0) {
+    return { leftHand: null, rightHand: null };
+  }
+
+  if (hands.length === 1) {
+    const h = hands[0];
+    const isLeft = String(h.handedness || "").toLowerCase().includes("left");
+    const isRight = String(h.handedness || "").toLowerCase().includes("right");
+    if (isLeft) return { leftHand: h, rightHand: null };
+    if (isRight) return { leftHand: null, rightHand: h };
+    return (h.wrist?.x ?? 0.5) < 0.5
+      ? { leftHand: h, rightHand: null }
+      : { leftHand: null, rightHand: h };
+  }
+
+  const h1 = hands[0];
+  const h2 = hands[1];
+
+  const h1IsLeft = String(h1.handedness || "").toLowerCase().includes("left");
+  const h2IsLeft = String(h2.handedness || "").toLowerCase().includes("left");
+  const h1IsRight = String(h1.handedness || "").toLowerCase().includes("right");
+  const h2IsRight = String(h2.handedness || "").toLowerCase().includes("right");
+
+  if (h1IsLeft && h2IsRight) return { leftHand: h1, rightHand: h2 };
+  if (h1IsRight && h2IsLeft) return { leftHand: h2, rightHand: h1 };
+
+  return (h1.wrist?.x ?? 0.5) <= (h2.wrist?.x ?? 0.5)
+    ? { leftHand: h1, rightHand: h2 }
+    : { leftHand: h2, rightHand: h1 };
+}
+
+function fmtCoordVal(val) {
+  if (typeof val !== "number" || !Number.isFinite(val)) return "0.000";
+  return (val >= 0 ? "+" : "") + val.toFixed(3);
+}
+
+function getHandKeyPoints(hand) {
+  if (!hand) return [];
+  const fingers = hand.fingers || {};
+  return [
+    { name: "Wrist (Root)", color: "#10b981", data: hand.wrist, extended: null },
+    { name: "Thumb Tip", color: "#f59e0b", data: fingers.thumb?.tip, extended: fingers.thumb?.extended },
+    { name: "Index Tip", color: "#06b6d4", data: fingers.index?.tip, extended: fingers.index?.extended },
+    { name: "Middle Tip", color: "#6366f1", data: fingers.middle?.tip, extended: fingers.middle?.extended },
+    { name: "Ring Tip", color: "#a855f7", data: fingers.ring?.tip, extended: fingers.ring?.extended },
+    { name: "Pinky Tip", color: "#f43f5e", data: fingers.pinky?.tip, extended: fingers.pinky?.extended },
+  ];
 }
 
 // ============================================================================
@@ -1092,6 +1175,9 @@ export default function App() {
     );
   });
 
+  // Real-time Dual Hands (Left & Right) telemetry resolver
+  const { leftHand, rightHand } = resolveDualHands(handsPositions);
+
   return (
     <div
       className={`relative min-h-screen overflow-x-hidden font-sans transition-colors duration-500 selection:bg-purple-500 selection:text-white ${
@@ -1400,6 +1486,265 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* =========================================================================
+            DUAL-HAND 3D SPATIAL TELEMETRY (X, Y, Z) SECTION
+        ========================================================================= */}
+        <section className="space-y-6 pt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 text-cyan-900 dark:text-cyan-300 text-xs font-bold border border-cyan-300/40">
+                <Activity className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <span>Real-Time Biometric Sensor Grid</span>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                {t.telemetryTitle}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium">
+                {t.telemetrySub}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`w-2.5 h-2.5 rounded-full ${handsPositions.length > 0 ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
+              <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                {handsPositions.length} {handsPositions.length === 1 ? "Hand Active" : "Hands Active"}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* LEFT HAND TELEMETRY CARD */}
+            <div
+              className={`rounded-3xl p-6 backdrop-blur-3xl border transition-all shadow-[0_15px_35px_rgba(0,0,0,0.06)] flex flex-col justify-between ${
+                leftHand
+                  ? "border-cyan-500/40 shadow-[0_0_30px_rgba(6,182,212,0.12)] " +
+                    (theme === "dark" ? "bg-[#10142b]/85" : "bg-cyan-50/70")
+                  : theme === "dark"
+                  ? "bg-[#130e2a]/80 border-purple-900/30"
+                  : "bg-white/80 border-white/90 ring-1 ring-purple-100"
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200/60 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-sm border border-cyan-400/30">
+                      LH
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        {t.leftHandTitle}
+                      </h4>
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        Spatial Wrist & Knuckle Offsets
+                      </span>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-xs px-3 py-1 rounded-full font-black border ${
+                      leftHand
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/40 animate-pulse"
+                        : "bg-slate-100 dark:bg-white/5 text-slate-400 border-transparent"
+                    }`}
+                  >
+                    {leftHand ? "● STREAMING" : "STANDBY"}
+                  </span>
+                </div>
+
+                {leftHand ? (
+                  <>
+                    {/* Metrics Row */}
+                    <div className="grid grid-cols-3 gap-2.5 mb-5">
+                      <div className="p-3 rounded-2xl bg-white/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/10 text-center">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">{t.extMetric}</span>
+                        <span className="text-base font-black text-cyan-600 dark:text-cyan-300">
+                          {leftHand.metrics?.extendedCount ?? 0} / 5
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-white/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/10 text-center">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">{t.pinchMetric}</span>
+                        <span className="text-base font-black text-purple-600 dark:text-purple-300">
+                          {leftHand.metrics?.pinchThumbIndex ?? 0}%
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-white/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/10 text-center">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">{t.spanMetric}</span>
+                        <span className="text-base font-black text-indigo-600 dark:text-indigo-300">
+                          {leftHand.metrics?.palmSpan ?? 0}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Coordinates Table */}
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/60 dark:border-white/10">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100/80 dark:bg-white/5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          <tr>
+                            <th className="px-3.5 py-2.5">{t.jointCol}</th>
+                            <th className="px-3 py-2.5 text-center">{t.stateCol}</th>
+                            <th className="px-3 py-2.5 text-right font-mono">X</th>
+                            <th className="px-3 py-2.5 text-right font-mono">Y</th>
+                            <th className="px-3.5 py-2.5 text-right font-mono text-cyan-600 dark:text-cyan-400">{t.depthCol}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-mono">
+                          {getHandKeyPoints(leftHand).map((pt, idx) => (
+                            <tr key={idx} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                              <td className="px-3.5 py-2 font-sans font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pt.color }} />
+                                <span className="truncate max-w-[100px]">{pt.name}</span>
+                              </td>
+                              <td className="px-3 py-2 text-center font-sans">
+                                {pt.extended === null ? (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-white/10 text-slate-600 dark:text-slate-300">ROOT</span>
+                                ) : pt.extended ? (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">EXT</span>
+                                ) : (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-400">FOLD</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCoordVal(pt.data?.x)}</td>
+                              <td className="px-3 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCoordVal(pt.data?.y)}</td>
+                              <td className="px-3.5 py-2 text-right font-extrabold text-cyan-600 dark:text-cyan-300">{fmtCoordVal(pt.data?.z)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-500/60 border border-cyan-500/20">
+                      <Hand className="w-7 h-7" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      {t.awaitingLeftHand}
+                    </p>
+                    <span className="text-[11px] text-slate-400 max-w-xs">
+                      Hold your left hand inside camera view to start continuous 3D telemetry streaming.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT HAND TELEMETRY CARD */}
+            <div
+              className={`rounded-3xl p-6 backdrop-blur-3xl border transition-all shadow-[0_15px_35px_rgba(0,0,0,0.06)] flex flex-col justify-between ${
+                rightHand
+                  ? "border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.12)] " +
+                    (theme === "dark" ? "bg-[#181135]/85" : "bg-purple-50/70")
+                  : theme === "dark"
+                  ? "bg-[#130e2a]/80 border-purple-900/30"
+                  : "bg-white/80 border-white/90 ring-1 ring-purple-100"
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200/60 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black text-sm border border-purple-400/30">
+                      RH
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                        {t.rightHandTitle}
+                      </h4>
+                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                        Spatial Wrist & Knuckle Offsets
+                      </span>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`text-xs px-3 py-1 rounded-full font-black border ${
+                      rightHand
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-400/40 animate-pulse"
+                        : "bg-slate-100 dark:bg-white/5 text-slate-400 border-transparent"
+                    }`}
+                  >
+                    {rightHand ? "● STREAMING" : "STANDBY"}
+                  </span>
+                </div>
+
+                {rightHand ? (
+                  <>
+                    {/* Metrics Row */}
+                    <div className="grid grid-cols-3 gap-2.5 mb-5">
+                      <div className="p-3 rounded-2xl bg-white/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/10 text-center">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">{t.extMetric}</span>
+                        <span className="text-base font-black text-purple-600 dark:text-purple-300">
+                          {rightHand.metrics?.extendedCount ?? 0} / 5
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-white/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/10 text-center">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">{t.pinchMetric}</span>
+                        <span className="text-base font-black text-violet-600 dark:text-violet-300">
+                          {rightHand.metrics?.pinchThumbIndex ?? 0}%
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-white/70 dark:bg-white/5 border border-purple-200/50 dark:border-white/10 text-center">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">{t.spanMetric}</span>
+                        <span className="text-base font-black text-indigo-600 dark:text-indigo-300">
+                          {rightHand.metrics?.palmSpan ?? 0}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Coordinates Table */}
+                    <div className="overflow-x-auto rounded-2xl border border-slate-200/60 dark:border-white/10">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100/80 dark:bg-white/5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          <tr>
+                            <th className="px-3.5 py-2.5">{t.jointCol}</th>
+                            <th className="px-3 py-2.5 text-center">{t.stateCol}</th>
+                            <th className="px-3 py-2.5 text-right font-mono">X</th>
+                            <th className="px-3 py-2.5 text-right font-mono">Y</th>
+                            <th className="px-3.5 py-2.5 text-right font-mono text-purple-600 dark:text-purple-400">{t.depthCol}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-mono">
+                          {getHandKeyPoints(rightHand).map((pt, idx) => (
+                            <tr key={idx} className="hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                              <td className="px-3.5 py-2 font-sans font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: pt.color }} />
+                                <span className="truncate max-w-[100px]">{pt.name}</span>
+                              </td>
+                              <td className="px-3 py-2 text-center font-sans">
+                                {pt.extended === null ? (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-white/10 text-slate-600 dark:text-slate-300">ROOT</span>
+                                ) : pt.extended ? (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">EXT</span>
+                                ) : (
+                                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200/70 dark:bg-white/10 text-slate-500 dark:text-slate-400">FOLD</span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCoordVal(pt.data?.x)}</td>
+                              <td className="px-3 py-2 text-right text-slate-700 dark:text-slate-300">{fmtCoordVal(pt.data?.y)}</td>
+                              <td className="px-3.5 py-2 text-right font-extrabold text-purple-600 dark:text-purple-300">{fmtCoordVal(pt.data?.z)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                    <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500/60 border border-purple-500/20">
+                      <Hand className="w-7 h-7" />
+                    </div>
+                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      {t.awaitingRightHand}
+                    </p>
+                    <span className="text-[11px] text-slate-400 max-w-xs">
+                      Hold your right hand inside camera view to start continuous 3D telemetry streaming.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* =========================================================================
             RECENT ACTIVITY LOG
