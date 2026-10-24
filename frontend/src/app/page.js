@@ -426,7 +426,7 @@ const DEFAULT_TEAM_MEMBERS = [
     nameSi: "ඉසිර පියුමත්",
     degree: "BSC. COMPUTER SCIENCE(UG)",
     institution: "UNIVERSITY OF COLOMBO",
-    avatar: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=350&q=80",
+    avatar: "/team/isira.png",
     linkedin: "https://linkedin.com",
     github: "https://github.com/isirapiumath",
   },
@@ -718,7 +718,10 @@ export default function App() {
         const parsed = JSON.parse(saved);
         return DEFAULT_TEAM_MEMBERS.map((dm) => {
           const matched = parsed.find((p) => p.id === dm.id);
-          return matched ? { ...dm, avatar: matched.avatar || dm.avatar } : dm;
+          if (!matched) return dm;
+          // If stored avatar was the old unsplash placeholder, upgrade to the official new avatar
+          const isOldPlaceholder = matched.avatar && matched.avatar.includes("unsplash.com/photo-1539571696357");
+          return { ...dm, avatar: isOldPlaceholder ? dm.avatar : (matched.avatar || dm.avatar) };
         });
       }
     } catch (err) {
