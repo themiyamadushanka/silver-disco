@@ -29,15 +29,21 @@ function formatCoords(pt) {
   return `X=${formatCoord(pt.x)}  Y=${formatCoord(pt.y)}  Z=${formatCoord(pt.z)}`;
 }
 
-function resolveHands(hands) {
-  if (!Array.isArray(hands) || hands.length === 0) {
+function resolveHands(rawHands) {
+  if (!Array.isArray(rawHands) || rawHands.length === 0) {
+    return { leftHand: null, rightHand: null };
+  }
+
+  // Filter out any invalid/null hand entries
+  const hands = rawHands.filter((h) => h && typeof h === "object" && h.wrist);
+  if (hands.length === 0) {
     return { leftHand: null, rightHand: null };
   }
 
   if (hands.length === 1) {
     const h = hands[0];
-    const isLeft = (h.handedness || "").toLowerCase().includes("left");
-    const isRight = (h.handedness || "").toLowerCase().includes("right");
+    const isLeft = String(h.handedness || "").toLowerCase().includes("left");
+    const isRight = String(h.handedness || "").toLowerCase().includes("right");
     if (isLeft) return { leftHand: h, rightHand: null };
     if (isRight) return { leftHand: null, rightHand: h };
     return (h.wrist?.x ?? 0.5) < 0.5
@@ -48,10 +54,10 @@ function resolveHands(hands) {
   const h1 = hands[0];
   const h2 = hands[1];
 
-  const h1IsLeft = (h1.handedness || "").toLowerCase().includes("left");
-  const h2IsLeft = (h2.handedness || "").toLowerCase().includes("left");
-  const h1IsRight = (h1.handedness || "").toLowerCase().includes("right");
-  const h2IsRight = (h2.handedness || "").toLowerCase().includes("right");
+  const h1IsLeft = String(h1.handedness || "").toLowerCase().includes("left");
+  const h2IsLeft = String(h2.handedness || "").toLowerCase().includes("left");
+  const h1IsRight = String(h1.handedness || "").toLowerCase().includes("right");
+  const h2IsRight = String(h2.handedness || "").toLowerCase().includes("right");
 
   if (h1IsLeft && h2IsRight) return { leftHand: h1, rightHand: h2 };
   if (h1IsRight && h2IsLeft) return { leftHand: h2, rightHand: h1 };
@@ -130,7 +136,11 @@ function buildTable(leftHand, rightHand, globalGesture) {
 
 export async function POST(request) {
   try {
-    const data = await request.json();
+    const data = await request.json().catch(() => null);
+    if (!data) {
+      return NextResponse.json({ ok: false, error: "Invalid JSON body" }, { status: 400 });
+    }
+
     const now = Date.now();
 
     // Throttle terminal output to ~2.5 times per second so it doesn't flood the terminal
@@ -143,10 +153,14 @@ export async function POST(request) {
     const globalGesture = data.gesture || {};
     const { leftHand, rightHand } = resolveHands(hands);
 
-    console.log("\n" + buildTable(leftHand, rightHand, globalGesture));
+    // Only output if at least one hand is detected
+    if (leftHand || rightHand) {
+      console.log("\n" + buildTable(leftHand, rightHand, globalGesture));
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    console.warn("Terminal log handled error:", err.message);
+    return NextResponse.json({ ok: false, error: err.message }, { status: 200 });
   }
 }

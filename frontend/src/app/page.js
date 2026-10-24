@@ -740,6 +740,7 @@ export default function App() {
   const handsInstanceRef = useRef(null);
   const stabilizerRef = useRef(new TemporalGestureStabilizer({ stabilizationMs: 320, minConsensusFrames: 6 }));
   const lastTerminalLogRef = useRef(0);
+  const lastHandSeenTimeRef = useRef(0);
   const committedGestureRef = useRef(null);
   const profileFileInputRef = useRef(null);
 
@@ -841,12 +842,15 @@ export default function App() {
             }
           }
         },
-        width: 1280,
-        height: 720,
+        width: 640,
+        height: 480,
       });
 
       await camera.start();
       cameraInstanceRef.current = camera;
+      if (videoRef.current) {
+        await videoRef.current.play().catch(() => {});
+      }
       setCameraActive(true);
     } catch (err) {
       console.error("Camera error:", err);
@@ -893,6 +897,7 @@ export default function App() {
     const detectedCount = results.multiHandLandmarks?.length || 0;
 
     if (detectedCount > 0) {
+      lastHandSeenTimeRef.current = now;
       const primaryLandmarks = results.multiHandLandmarks[0];
       const extractedHands = results.multiHandLandmarks
         .map((landmarks, index) => {
@@ -956,7 +961,7 @@ export default function App() {
           const p2 = landmarks[j];
           const grad = ctx.createLinearGradient(p1.x * width, p1.y * height, p2.x * width, p2.y * height);
           grad.addColorStop(0, "rgba(168, 85, 247, 0.85)");
-          grad.addColorStop(1, "rgba(99, 102, 241, 0.85)");
+          grad.addColorStop(1, "rgba(6, 182, 212, 0.85)");
           ctx.strokeStyle = grad;
           ctx.beginPath();
           ctx.moveTo(p1.x * width, p1.y * height);
@@ -964,22 +969,42 @@ export default function App() {
           ctx.stroke();
         });
 
-        landmarks.forEach((pt) => {
+        landmarks.forEach((pt, idx) => {
+          const x = pt.x * width;
+          const y = pt.y * height;
+
+          let nodeColor = "#c084fc";
+          let radius = 4;
+
+          // Tip highlights
+          if (idx === 4) { nodeColor = "#f59e0b"; radius = 6; } // Thumb Tip
+          else if (idx === 8) { nodeColor = "#06b6d4"; radius = 6; } // Index Tip
+          else if (idx === 12) { nodeColor = "#6366f1"; radius = 6; } // Middle Tip
+          else if (idx === 16) { nodeColor = "#a855f7"; radius = 6; } // Ring Tip
+          else if (idx === 20) { nodeColor = "#f43f5e"; radius = 6; } // Pinky Tip
+          else if (idx === 0) { nodeColor = "#10b981"; radius = 6.5; } // Wrist
+
+          // Outer glow ring
           ctx.beginPath();
-          ctx.arc(pt.x * width, pt.y * height, 4.5, 0, Math.PI * 2);
-          ctx.fillStyle = "#c084fc";
+          ctx.arc(x, y, radius + 2, 0, 2 * Math.PI);
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
           ctx.fill();
-          ctx.lineWidth = 1.5;
-          ctx.strokeStyle = "#ffffff";
-          ctx.stroke();
+
+          // Main node circle
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, 2 * Math.PI);
+          ctx.fillStyle = nodeColor;
+          ctx.fill();
         });
       });
     } else {
-      if (now - lastUiUpdateRef.current >= 150) {
-        lastUiUpdateRef.current = now;
-        stabilizerRef.current.reset();
-        setHandsPositions([]);
-        setActiveGesture(null);
+      if (now - lastHandSeenTimeRef.current > 700) {
+        if (now - lastUiUpdateRef.current >= 150) {
+          lastUiUpdateRef.current = now;
+          stabilizerRef.current.reset();
+          setHandsPositions([]);
+          setActiveGesture(null);
+        }
       }
     }
 
@@ -1189,24 +1214,29 @@ export default function App() {
             <div className="relative aspect-video rounded-2xl bg-slate-950 overflow-hidden flex items-center justify-center border-2 border-purple-500/20 shadow-inner">
               <video
                 ref={videoRef}
+                autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${cameraActive ? "block" : "hidden"}`}
+                className={`w-full h-full object-cover -scale-x-100 transition-opacity duration-300 ${
+                  cameraActive ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
               />
               <canvas
                 ref={canvasRef}
-                width={1280}
-                height={720}
-                className="absolute inset-0 w-full h-full pointer-events-none"
+                width={640}
+                height={480}
+                className={`absolute inset-0 w-full h-full pointer-events-none -scale-x-100 transition-opacity duration-300 ${
+                  cameraActive ? "opacity-100" : "opacity-0"
+                }`}
               />
 
               {!cameraActive && (
-                <div className="text-center p-6 space-y-3 max-w-md">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center p-6 space-y-3 bg-slate-950/95 backdrop-blur-sm">
                   <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mx-auto text-purple-300">
                     <CameraOff className="w-8 h-8" />
                   </div>
                   <h3 className="text-base font-bold text-white">{t.cameraOffTitle}</h3>
-                  <p className="text-xs text-slate-300 font-normal leading-relaxed">{t.cameraOffDesc}</p>
+                  <p className="text-xs text-slate-300 font-normal leading-relaxed max-w-sm">{t.cameraOffDesc}</p>
                 </div>
               )}
             </div>
