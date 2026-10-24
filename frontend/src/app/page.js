@@ -8,6 +8,7 @@ import GestureGuide from "@/components/GestureGuide";
 
 export default function Home() {
   const [positions, setPositions] = useState(null);
+  const [handsPositions, setHandsPositions] = useState([]);
   const [currentGesture, setCurrentGesture] = useState(null);
   const [isMirror, setIsMirror] = useState(true);
   const [isStreamingToTerminal, setIsStreamingToTerminal] = useState(false);
@@ -54,7 +55,7 @@ export default function Home() {
   // Automatically log all finger positions directly to the npm run dev terminal
   const lastTerminalLogRef = useRef(0);
   useEffect(() => {
-    if (!positions) return;
+    if (handsPositions.length === 0) return;
     const now = Date.now();
     if (now - lastTerminalLogRef.current >= 400) {
       lastTerminalLogRef.current = now;
@@ -62,15 +63,12 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          wrist: positions.wrist,
-          fingers: positions.fingers,
-          metrics: positions.metrics,
+          hands: handsPositions,
           gesture: currentGesture,
-          handedness: positions.handedness,
         }),
       }).catch(() => {});
     }
-  }, [positions, currentGesture]);
+  }, [handsPositions, currentGesture]);
 
   // Send coordinates over WebSocket whenever positions or gesture update
   useEffect(() => {
@@ -78,17 +76,15 @@ export default function Home() {
       isStreamingToTerminal &&
       socketRef.current &&
       socketRef.current.readyState === WebSocket.OPEN &&
-      positions
+      handsPositions.length > 0
     ) {
       const payload = {
-        wrist: positions.wrist,
-        fingers: positions.fingers,
-        metrics: positions.metrics,
+        hands: handsPositions,
         gesture: currentGesture,
       };
       socketRef.current.send(JSON.stringify(payload));
     }
-  }, [positions, currentGesture, isStreamingToTerminal]);
+  }, [handsPositions, currentGesture, isStreamingToTerminal]);
 
   return (
     <div>
@@ -151,6 +147,7 @@ export default function Home() {
           <div className="workspace-column">
             <HandCamera
               onPositionsUpdate={setPositions}
+              onHandsUpdate={setHandsPositions}
               onGestureDetected={setCurrentGesture}
               isMirror={isMirror}
             />

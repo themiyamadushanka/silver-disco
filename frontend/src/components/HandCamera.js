@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { loadMediaPipeScripts, HAND_CONNECTIONS } from "@/lib/mediapipe";
 import { extractPositions, detectGesture } from "@/lib/gestureDetector";
 
-export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMirror = true }) {
+export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGestureDetected, isMirror = true }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -23,11 +23,13 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
 
   // Keep latest callbacks in ref to avoid re-triggering effects
   const onPositionsUpdateRef = useRef(onPositionsUpdate);
+  const onHandsUpdateRef = useRef(onHandsUpdate);
   const onGestureDetectedRef = useRef(onGestureDetected);
   useEffect(() => {
     onPositionsUpdateRef.current = onPositionsUpdate;
+    onHandsUpdateRef.current = onHandsUpdate;
     onGestureDetectedRef.current = onGestureDetected;
-  }, [onPositionsUpdate, onGestureDetected]);
+  }, [onPositionsUpdate, onHandsUpdate, onGestureDetected]);
 
   // Initialize MediaPipe Hands and Camera
   const initMediaPipe = async () => {
@@ -141,15 +143,24 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
     if (detectedCount > 0) {
       lastHandSeenTimeRef.current = now;
       const primaryLandmarks = results.multiHandLandmarks[0];
-      const handedness = results.multiHandedness?.[0]?.label || "Right";
+      const handsPositions = results.multiHandLandmarks.map((landmarks, index) => {
+        const rawLabel = results.multiHandedness?.[index]?.label;
+        const handedness = rawLabel || (index === 0 ? "Left" : "Right");
+        const pos = extractPositions(landmarks, handedness);
+        if (pos) {
+          pos.gesture = detectGesture(landmarks, pos);
+        }
+        return pos;
+      }).filter(Boolean);
 
       // Throttle React UI state updates to every 40ms (~25 FPS) for smooth real-time coordinates
       if (now - lastUiUpdateRef.current >= 40) {
         lastUiUpdateRef.current = now;
-        const positions = extractPositions(primaryLandmarks, handedness);
-        const gesture = detectGesture(primaryLandmarks, positions);
+        const positions = handsPositions[0];
+        const gesture = positions?.gesture || detectGesture(primaryLandmarks, positions);
 
         if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(positions);
+        if (onHandsUpdateRef.current) onHandsUpdateRef.current(handsPositions);
         if (onGestureDetectedRef.current) onGestureDetectedRef.current(gesture);
       }
 
@@ -210,6 +221,7 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
         if (now - lastUiUpdateRef.current >= 150) {
           lastUiUpdateRef.current = now;
           if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(null);
+          if (onHandsUpdateRef.current) onHandsUpdateRef.current([]);
           if (onGestureDetectedRef.current) onGestureDetectedRef.current(null);
         }
       }

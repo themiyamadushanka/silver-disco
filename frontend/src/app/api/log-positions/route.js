@@ -2,6 +2,132 @@ import { NextResponse } from "next/server";
 
 let lastLogTime = 0;
 
+function stripEmojis(str) {
+  return String(str || "")
+    .replace(/[\u{1F300}-\u{1FAD6}\u{2000}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function pad(str, len, align = "left") {
+  str = String(str || "");
+  if (str.length >= len) return str.slice(0, len);
+  if (align === "center") {
+    const leftPad = Math.floor((len - str.length) / 2);
+    return " ".repeat(leftPad) + str + " ".repeat(len - str.length - leftPad);
+  }
+  return align === "right" ? str.padStart(len) : str.padEnd(len);
+}
+
+function formatCoord(val) {
+  if (typeof val !== "number" || !Number.isFinite(val)) return " 0.000";
+  return (val >= 0 ? " " : "") + val.toFixed(3);
+}
+
+function formatCoords(pt) {
+  if (!pt || typeof pt.x !== "number") return "      -- Not Detected --     ";
+  return `X=${formatCoord(pt.x)}  Y=${formatCoord(pt.y)}  Z=${formatCoord(pt.z)}`;
+}
+
+function resolveHands(hands) {
+  if (!Array.isArray(hands) || hands.length === 0) {
+    return { leftHand: null, rightHand: null };
+  }
+
+  if (hands.length === 1) {
+    const h = hands[0];
+    const isLeft = (h.handedness || "").toLowerCase().includes("left");
+    const isRight = (h.handedness || "").toLowerCase().includes("right");
+    if (isLeft) return { leftHand: h, rightHand: null };
+    if (isRight) return { leftHand: null, rightHand: h };
+    return (h.wrist?.x ?? 0.5) < 0.5
+      ? { leftHand: h, rightHand: null }
+      : { leftHand: null, rightHand: h };
+  }
+
+  const h1 = hands[0];
+  const h2 = hands[1];
+
+  const h1IsLeft = (h1.handedness || "").toLowerCase().includes("left");
+  const h2IsLeft = (h2.handedness || "").toLowerCase().includes("left");
+  const h1IsRight = (h1.handedness || "").toLowerCase().includes("right");
+  const h2IsRight = (h2.handedness || "").toLowerCase().includes("right");
+
+  if (h1IsLeft && h2IsRight) return { leftHand: h1, rightHand: h2 };
+  if (h1IsRight && h2IsLeft) return { leftHand: h2, rightHand: h1 };
+
+  return (h1.wrist?.x ?? 0.5) <= (h2.wrist?.x ?? 0.5)
+    ? { leftHand: h1, rightHand: h2 }
+    : { leftHand: h2, rightHand: h1 };
+}
+
+function buildTable(leftHand, rightHand, globalGesture) {
+  const colW = [16, 30, 7, 30, 7];
+  const sep = "+" + colW.map((w) => "-".repeat(w + 2)).join("+") + "+";
+  const row = (c1, c2, c3, c4, c5) =>
+    `| ${pad(c1, colW[0])} | ${pad(c2, colW[1])} | ${pad(c3, colW[2], "center")} | ${pad(c4, colW[3])} | ${pad(c5, colW[4], "center")} |`;
+
+  const leftTitle = leftHand ? "LEFT HAND (X, Y, Z)" : "LEFT HAND (Inactive)";
+  const rightTitle = rightHand ? "RIGHT HAND (X, Y, Z)" : "RIGHT HAND (Inactive)";
+
+  const lines = [
+    sep,
+    row("JOINT / METRIC", leftTitle, "STATE", rightTitle, "STATE"),
+    sep,
+    row(
+      "Wrist (Root)",
+      formatCoords(leftHand?.wrist),
+      leftHand ? "--" : "--",
+      formatCoords(rightHand?.wrist),
+      rightHand ? "--" : "--"
+    ),
+  ];
+
+  const fingerNames = ["thumb", "index", "middle", "ring", "pinky"];
+  for (const fingerName of fingerNames) {
+    const lf = leftHand?.fingers?.[fingerName];
+    const rf = rightHand?.fingers?.[fingerName];
+    const label = `${fingerName.charAt(0).toUpperCase()}${fingerName.slice(1)} Tip`;
+
+    const lCoords = formatCoords(lf?.tip);
+    const lState = lf ? (lf.extended ? "EXT" : "FOLD") : "--";
+
+    const rCoords = formatCoords(rf?.tip);
+    const rState = rf ? (rf.extended ? "EXT" : "FOLD") : "--";
+
+    lines.push(row(label, lCoords, lState, rCoords, rState));
+  }
+
+  lines.push(sep);
+
+  const lGestureObj = leftHand?.gesture || (leftHand && !rightHand ? globalGesture : null);
+  const rGestureObj = rightHand?.gesture || (!leftHand && rightHand ? globalGesture : null);
+
+  const lSign = lGestureObj ? stripEmojis(lGestureObj.label || lGestureObj.gesture || "Tracking") : "--";
+  const lConf = lGestureObj?.confidence ? `[${lGestureObj.confidence}%]` : "--";
+
+  const rSign = rGestureObj ? stripEmojis(rGestureObj.label || rGestureObj.gesture || "Tracking") : "--";
+  const rConf = rGestureObj?.confidence ? `[${rGestureObj.confidence}%]` : "--";
+
+  lines.push(row("Detected Sign", lSign, lConf, rSign, rConf));
+
+  const lPinch = leftHand?.metrics ? `Pinch: ${leftHand.metrics.pinchThumbIndex || 0}%  Span: ${leftHand.metrics.palmSpan || 0}%` : "--";
+  const lPinchState = leftHand?.metrics ? (leftHand.metrics.isPinching ? "PINCH" : "OPEN") : "--";
+
+  const rPinch = rightHand?.metrics ? `Pinch: ${rightHand.metrics.pinchThumbIndex || 0}%  Span: ${rightHand.metrics.palmSpan || 0}%` : "--";
+  const rPinchState = rightHand?.metrics ? (rightHand.metrics.isPinching ? "PINCH" : "OPEN") : "--";
+
+  lines.push(row("Pinch & Span", lPinch, lPinchState, rPinch, rPinchState));
+
+  const lExt = leftHand?.metrics ? `${leftHand.metrics.extendedCount || 0} / 5 Extended` : "--";
+  const rExt = rightHand?.metrics ? `${rightHand.metrics.extendedCount || 0} / 5 Extended` : "--";
+
+  lines.push(row("Extended Count", lExt, "", rExt, ""));
+  lines.push(sep);
+
+  return lines.join("\n");
+}
+
 export async function POST(request) {
   try {
     const data = await request.json();
@@ -13,33 +139,11 @@ export async function POST(request) {
     }
     lastLogTime = now;
 
-    const { wrist = {}, fingers = {}, metrics = {}, gesture = {}, handedness = "Right" } = data;
-    const thumb = fingers.thumb?.tip || {};
-    const index = fingers.index?.tip || {};
-    const middle = fingers.middle?.tip || {};
-    const ring = fingers.ring?.tip || {};
-    const pinky = fingers.pinky?.tip || {};
+    const hands = Array.isArray(data.hands) ? data.hands : [data];
+    const globalGesture = data.gesture || {};
+    const { leftHand, rightHand } = resolveHands(hands);
 
-    const tExt = fingers.thumb?.extended ? "EXTENDED" : "FOLDED";
-    const iExt = fingers.index?.extended ? "EXTENDED" : "FOLDED";
-    const mExt = fingers.middle?.extended ? "EXTENDED" : "FOLDED";
-    const rExt = fingers.ring?.extended ? "EXTENDED" : "FOLDED";
-    const pExt = fingers.pinky?.extended ? "EXTENDED" : "FOLDED";
-
-    const banner = [
-      "\n" + "=".repeat(75),
-      `🖐️ [LIVE HAND] ${handedness} Hand | Sign: ${gesture.label || "Tracking"} | Pinch: ${metrics.pinchThumbIndex || 0}%`,
-      "-".repeat(75),
-      `  • Wrist (Base): X=${wrist.x?.toFixed(3) || "0.000"}  Y=${wrist.y?.toFixed(3) || "0.000"}  Z=${wrist.z?.toFixed(3) || "0.000"}`,
-      `  • Thumb Tip:    X=${thumb.x?.toFixed(3) || "0.000"}  Y=${thumb.y?.toFixed(3) || "0.000"}  Z=${thumb.z?.toFixed(3) || "0.000"}  [${tExt}]`,
-      `  • Index Tip:    X=${index.x?.toFixed(3) || "0.000"}  Y=${index.y?.toFixed(3) || "0.000"}  Z=${index.z?.toFixed(3) || "0.000"}  [${iExt}]`,
-      `  • Middle Tip:   X=${middle.x?.toFixed(3) || "0.000"}  Y=${middle.y?.toFixed(3) || "0.000"}  Z=${middle.z?.toFixed(3) || "0.000"}  [${mExt}]`,
-      `  • Ring Tip:     X=${ring.x?.toFixed(3) || "0.000"}  Y=${ring.y?.toFixed(3) || "0.000"}  Z=${ring.z?.toFixed(3) || "0.000"}  [${rExt}]`,
-      `  • Pinky Tip:    X=${pinky.x?.toFixed(3) || "0.000"}  Y=${pinky.y?.toFixed(3) || "0.000"}  Z=${pinky.z?.toFixed(3) || "0.000"}  [${pExt}]`,
-      "=".repeat(75),
-    ].join("\n");
-
-    console.log(banner);
+    console.log("\n" + buildTable(leftHand, rightHand, globalGesture));
 
     return NextResponse.json({ ok: true });
   } catch (err) {
