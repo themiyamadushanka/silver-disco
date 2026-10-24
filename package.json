@@ -1,0 +1,25 @@
+{
+  "name": "signbridge-ai-fullstack",
+  "version": "1.0.0",
+  "description": "Next.js (JS) frontend with MediaPipe Hand Tracking & FastAPI backend",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "cd backend && python run.py",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run start",
+    "lint": "npm --prefix frontend run lint",
+    "postinstall": "npm --prefix frontend install"
+  },
+  "keywords": [
+    "nextjs",
+    "fastapi",
+    "mediapipe",
+    "hand-tracking",
+    "sign-language",
+    "accessibility"
+  ],
+  "author": "Themiya Madushanka",
+  "license": "MIT"
+}
