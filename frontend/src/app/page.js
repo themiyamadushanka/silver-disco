@@ -446,7 +446,7 @@ const DEFAULT_TEAM_MEMBERS = [
     nameSi: "තුවිෂ්ක දසනායක",
     degree: "BSC. COMPUTER SCIENCE(UG)",
     institution: "UNIVERSITY OF COLOMBO",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=350&q=80",
+    avatar: "/team/thuvishka.png",
     linkedin: "https://linkedin.com",
     github: "https://github.com",
   },
@@ -456,7 +456,7 @@ const DEFAULT_TEAM_MEMBERS = [
     nameSi: "හරිඳු හංසජ",
     degree: "BSC.(HONS) ENGINEERING(UG)",
     institution: "UNIVERSITY OF MORATUWA",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=350&q=80",
+    avatar: "/team/harindu.png",
     linkedin: "https://linkedin.com",
     github: null,
   },
@@ -466,7 +466,7 @@ const DEFAULT_USER_PROFILE = {
   name: "Thuvishka Dasanayaka",
   email: "thuvishka@hastha.ai",
   phone: "+94 77 123 4567",
-  avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+  avatar: "/team/thuvishka.png",
 };
 
 // ============================================================================
@@ -777,7 +777,11 @@ export default function App() {
     try {
       const saved = typeof window !== "undefined" ? localStorage.getItem("hastha_user_profile") : null;
       if (saved) {
-        return { ...DEFAULT_USER_PROFILE, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (parsed.avatar && parsed.avatar.includes("images.unsplash.com")) {
+          parsed.avatar = DEFAULT_USER_PROFILE.avatar;
+        }
+        return { ...DEFAULT_USER_PROFILE, ...parsed };
       }
     } catch (err) {
       console.warn("Could not read user profile from localStorage:", err);
