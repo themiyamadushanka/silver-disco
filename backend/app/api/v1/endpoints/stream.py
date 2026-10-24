@@ -1,21 +1,59 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from app.services.ai_chat import ai_chat_handler
+from app.services.session_store import save_tracking_session_in_python
+
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 router = APIRouter()
+
 
 @router.websocket("/hand-stream")
 async def websocket_hand_stream(websocket: WebSocket):
     """
-    Receives live 3D hand coordinates from the Next.js frontend
-    and prints ALL finger positions (Wrist, Thumb, Index, Middle, Ring, Pinky)
-    directly to the terminal in real-time.
+    Receives live 3D hand coordinates from the Next.js frontend,
+    prints live finger positions to the terminal, and on SESSION_PAUSE / SESSION_END,
+    analyzes all recorded positions and generates a meaningful sentence via AI.
     """
     await websocket.accept()
     print("\n" + "=" * 75)
-    print("🟢 [LIVE HAND TRACKER CONNECTED] Printing ALL finger positions to terminal...")
+    print("🟢 [LIVE HAND TRACKER CONNECTED] Streaming session started...")
     print("=" * 75 + "\n")
+
+    session_frames = []
+
     try:
         while True:
             data = await websocket.receive_json()
+            action = data.get("action")
+
+            # Check if this message signals the user clicked PAUSE / END
+            if action in ["SESSION_PAUSE", "SESSION_END"]:
+                print("\n" + "-" * 75)
+                print("⏸️ [PAUSE TRIGGER RECEIVED] User paused camera - saving to Python list and analyzing...")
+                print("-" * 75)
+
+                # Save all tracked finger positions into the Python list
+                save_tracking_session_in_python(session_frames)
+
+                result = ai_chat_handler.process_session(session_frames)
+
+                # Send AI result back to frontend
+                await websocket.send_json({
+                    "type": "AI_ANALYSIS_RESULT",
+                    "payload": result
+                })
+
+                # Clear session for next recording run
+                session_frames.clear()
+                continue
+
+            # Regular frame: record into active session buffer
+            session_frames.append(data)
+
             wrist = data.get("wrist") or {}
             fingers = data.get("fingers") or {}
             gesture = data.get("gesture") or {}
@@ -37,16 +75,18 @@ async def websocket_hand_stream(websocket: WebSocket):
             gesture_label = gesture.get("label", "Tracking")
             pinch = metrics.get("pinchThumbIndex", 0)
 
+            # Print single-line live terminal updates during active stream
             print(
-                f"\n🖐️ [{handedness.upper()} HAND] Sign: {gesture_label} | Pinch: {pinch}%\n"
-                f"  • Wrist:  X={wrist.get('x', 0):.3f}  Y={wrist.get('y', 0):.3f}  Z={wrist.get('z', 0):.3f}\n"
-                f"  • Thumb:  X={thumb.get('x', 0):.3f}  Y={thumb.get('y', 0):.3f}  Z={thumb.get('z', 0):.3f}  [{t_stat}]\n"
-                f"  • Index:  X={index.get('x', 0):.3f}  Y={index.get('y', 0):.3f}  Z={index.get('z', 0):.3f}  [{i_stat}]\n"
-                f"  • Middle: X={middle.get('x', 0):.3f}  Y={middle.get('y', 0):.3f}  Z={middle.get('z', 0):.3f}  [{m_stat}]\n"
-                f"  • Ring:   X={ring.get('x', 0):.3f}  Y={ring.get('y', 0):.3f}  Z={ring.get('z', 0):.3f}  [{r_stat}]\n"
-                f"  • Pinky:  X={pinky.get('x', 0):.3f}  Y={pinky.get('y', 0):.3f}  Z={pinky.get('z', 0):.3f}  [{p_stat}]\n"
-                f"{'-'*75}"
+                f"\r🖐️ [{handedness[:1]}] "
+                f"W:({wrist.get('x',0):.2f},{wrist.get('y',0):.2f}) "
+                f"T:[{t_stat}] I:[{i_stat}] M:[{m_stat}] R:[{r_stat}] P:[{p_stat}] "
+                f"Pinch:{pinch:>2}% Sign:{gesture_label:<18} (Frames: {len(session_frames)})",
+                end="",
+                flush=True
             )
 
     except WebSocketDisconnect:
-        print("\n\n🔴 [TERMINAL STREAM DISCONNECTED]\n")
+        if session_frames:
+            print("\n\n🔌 [DISCONNECTED: Processing final frames before exit...]")
+            ai_chat_handler.process_session(session_frames)
+        print("\n🔴 [TERMINAL STREAM CLOSED]\n")

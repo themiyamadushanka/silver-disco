@@ -12,6 +12,7 @@ export default function Home() {
   const [isMirror, setIsMirror] = useState(true);
   const [isStreamingToTerminal, setIsStreamingToTerminal] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [sessionResult, setSessionResult] = useState(null);
 
   const socketRef = useRef(null);
 
@@ -132,18 +133,90 @@ export default function Home() {
       <main className="container" style={{ paddingBottom: "60px" }}>
         {/* Hero Section */}
         <section className="hero">
-          <div className="hero-pill">
-            <span>⚡ Real-Time MediaPipe Computer Vision (Client-Side)</span>
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap", marginBottom: "12px" }}>
+            <div className="hero-pill">
+              <span>⚡ Real-Time MediaPipe 3D Hand Tracking</span>
+            </div>
+            <div
+              className="hero-pill"
+              style={{
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2))",
+                borderColor: "rgba(16, 185, 129, 0.4)",
+                color: "#10b981",
+              }}
+            >
+              <span>📊 Active CSV Dataset: <strong>sign_language_dual_hands_dataset.csv</strong> (300 Samples • 20 ASL Signs)</span>
+            </div>
           </div>
           <h2 className="hero-title">
             Track Hand Positions &amp; <span className="text-gradient">Translate Signs to Voice</span>
           </h2>
           <p className="hero-description">
-            Open your camera to track 21 3D hand joints in real-time. Understand hand
-            gestures used by mute individuals and automatically translate them into spoken voice
-            and subtitles for normal people.
+            Capture 3D hand landmarks in real-time, match against the professional 300-sample
+            ASL CSV dataset, and translate mute sign sequences into spoken natural sentences with Azure AI Foundry.
           </p>
         </section>
+
+        {/* Real-Time Session AI Result Card */}
+        {sessionResult && (
+          <div
+            className="card"
+            style={{
+              marginBottom: "24px",
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(6, 182, 212, 0.15))",
+              border: "1px solid rgba(99, 102, 241, 0.4)",
+              boxShadow: "0 10px 30px rgba(99, 102, 241, 0.2)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "1.4rem" }}>✨</span>
+                <span style={{ fontWeight: 700, color: "var(--accent-cyan)", fontSize: "0.95rem" }}>
+                  AI Generated Sentence (From {sessionResult.totalFrames} Finger Snapshots)
+                </span>
+              </div>
+              <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", background: "rgba(255,255,255,0.06)", padding: "2px 8px", borderRadius: "12px" }}>
+                {sessionResult.source}
+              </span>
+            </div>
+
+            {/* Display Recognized CSV Signs sequence */}
+            {sessionResult.detectedSigns && sessionResult.detectedSigns.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "8px 0 12px 0", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontWeight: 600 }}>CSV Dataset Signs:</span>
+                {sessionResult.detectedSigns.map((sign, idx) => (
+                  <span
+                    key={idx}
+                    style={{
+                      background: "rgba(99, 102, 241, 0.25)",
+                      border: "1px solid rgba(99, 102, 241, 0.5)",
+                      color: "#e2e8f0",
+                      padding: "2px 10px",
+                      borderRadius: "12px",
+                      fontSize: "0.8rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.5px"
+                    }}
+                  >
+                    {sign}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <p
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: 600,
+                color: "#f8fafc",
+                lineHeight: 1.5,
+                margin: "8px 0 0 0",
+              }}
+            >
+              &ldquo;{sessionResult.sentence}&rdquo;
+            </p>
+          </div>
+        )}
 
         {/* Primary Interactive Workspace Grid */}
         <div className="grid-main-workspace">
@@ -152,6 +225,7 @@ export default function Home() {
             <HandCamera
               onPositionsUpdate={setPositions}
               onGestureDetected={setCurrentGesture}
+              onSessionResult={setSessionResult}
               isMirror={isMirror}
             />
           </div>

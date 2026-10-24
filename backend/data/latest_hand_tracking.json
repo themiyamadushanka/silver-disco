@@ -1,0 +1,243 @@
+{
+  "session_id": "session_1792826954",
+  "timestamp": "2026-10-24 12:59:14",
+  "total_frames": 4,
+  "finger_positions": [
+    {
+      "time_ms": 0,
+      "wrist": {
+        "x": 0.5,
+        "y": 0.6,
+        "z": 0.0
+      },
+      "fingers": {
+        "thumb": {
+          "tip": {
+            "x": 0.52,
+            "y": 0.5,
+            "z": -0.01
+          },
+          "extended": true
+        },
+        "index": {
+          "tip": {
+            "x": 0.5,
+            "y": 0.38,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "middle": {
+          "tip": {
+            "x": 0.48,
+            "y": 0.36,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "ring": {
+          "tip": {
+            "x": 0.46,
+            "y": 0.37,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "pinky": {
+          "tip": {
+            "x": 0.44,
+            "y": 0.41,
+            "z": -0.01
+          },
+          "extended": true
+        }
+      },
+      "metrics": {
+        "extendedCount": 5,
+        "pinchThumbIndex": 20
+      },
+      "gesture": {
+        "gesture": "OPEN_HAND",
+        "label": "Hello / Open Hand",
+        "confidence": 97
+      }
+    },
+    {
+      "time_ms": 200,
+      "wrist": {
+        "x": 0.5,
+        "y": 0.6,
+        "z": 0.0
+      },
+      "fingers": {
+        "thumb": {
+          "tip": {
+            "x": 0.52,
+            "y": 0.5,
+            "z": -0.01
+          },
+          "extended": true
+        },
+        "index": {
+          "tip": {
+            "x": 0.5,
+            "y": 0.38,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "middle": {
+          "tip": {
+            "x": 0.48,
+            "y": 0.36,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "ring": {
+          "tip": {
+            "x": 0.46,
+            "y": 0.37,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "pinky": {
+          "tip": {
+            "x": 0.44,
+            "y": 0.41,
+            "z": -0.01
+          },
+          "extended": true
+        }
+      },
+      "metrics": {
+        "extendedCount": 5,
+        "pinchThumbIndex": 18
+      },
+      "gesture": {
+        "gesture": "OPEN_HAND",
+        "label": "Hello / Open Hand",
+        "confidence": 97
+      }
+    },
+    {
+      "time_ms": 600,
+      "wrist": {
+        "x": 0.5,
+        "y": 0.6,
+        "z": 0.0
+      },
+      "fingers": {
+        "thumb": {
+          "tip": {
+            "x": 0.53,
+            "y": 0.54,
+            "z": -0.01
+          },
+          "extended": true
+        },
+        "index": {
+          "tip": {
+            "x": 0.51,
+            "y": 0.39,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "middle": {
+          "tip": {
+            "x": 0.49,
+            "y": 0.37,
+            "z": -0.02
+          },
+          "extended": false
+        },
+        "ring": {
+          "tip": {
+            "x": 0.47,
+            "y": 0.38,
+            "z": -0.02
+          },
+          "extended": false
+        },
+        "pinky": {
+          "tip": {
+            "x": 0.45,
+            "y": 0.42,
+            "z": -0.01
+          },
+          "extended": true
+        }
+      },
+      "metrics": {
+        "extendedCount": 3,
+        "pinchThumbIndex": 15
+      },
+      "gesture": {
+        "gesture": "ILY",
+        "label": "I Love You",
+        "confidence": 96
+      }
+    },
+    {
+      "time_ms": 800,
+      "wrist": {
+        "x": 0.5,
+        "y": 0.6,
+        "z": 0.0
+      },
+      "fingers": {
+        "thumb": {
+          "tip": {
+            "x": 0.53,
+            "y": 0.54,
+            "z": -0.01
+          },
+          "extended": true
+        },
+        "index": {
+          "tip": {
+            "x": 0.51,
+            "y": 0.39,
+            "z": -0.02
+          },
+          "extended": true
+        },
+        "middle": {
+          "tip": {
+            "x": 0.49,
+            "y": 0.37,
+            "z": -0.02
+          },
+          "extended": false
+        },
+        "ring": {
+          "tip": {
+            "x": 0.47,
+            "y": 0.38,
+            "z": -0.02
+          },
+          "extended": false
+        },
+        "pinky": {
+          "tip": {
+            "x": 0.45,
+            "y": 0.42,
+            "z": -0.01
+          },
+          "extended": true
+        }
+      },
+      "metrics": {
+        "extendedCount": 3,
+        "pinchThumbIndex": 14
+      },
+      "gesture": {
+        "gesture": "ILY",
+        "label": "I Love You",
+        "confidence": 96
+      }
+    }
+  ]
+}

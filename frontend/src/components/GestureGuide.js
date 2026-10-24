@@ -5,74 +5,144 @@ import React from "react";
 export default function GestureGuide() {
   const guideItems = [
     {
-      sign: "🖐️ Open Palm / Wave",
-      speech: '"Hello! Greetings!"',
-      action: "Extend all 5 fingers upright facing the camera",
-      meaning: "Universal friendly greeting",
-      badge: "Greeting",
+      sign: "🖐️ HELLO",
+      speech: '"Hello! How are you?"',
+      action: "Open palm facing camera, all fingers spread upright",
+      category: "Greeting",
+      hands: "Single Hand",
     },
     {
-      sign: "🤟 I Love You",
+      sign: "🙏 THANK_YOU",
+      speech: '"Thank you very much"',
+      action: "Flat open hand moving from chin/chest outward",
+      category: "Courtesy",
+      hands: "Single / Both",
+    },
+    {
+      sign: "👍 YES",
+      speech: '"Yes, I agree"',
+      action: "Firm fist with thumb extended upright (thumbs-up)",
+      category: "Affirmation",
+      hands: "Single Hand",
+    },
+    {
+      sign: "👎 NO",
+      speech: '"No, I disagree"',
+      action: "Fist with thumb pointing downwards in rejection",
+      category: "Negation",
+      hands: "Single Hand",
+    },
+    {
+      sign: "🤲 PLEASE",
+      speech: '"Please, could you help?"',
+      action: "Flat open hand pressed gently against chest",
+      category: "Courtesy",
+      hands: "Single Hand",
+    },
+    {
+      sign: "🤟 I_LOVE_YOU",
       speech: '"I love you"',
       action: "Extend Thumb, Index, and Pinky; fold Middle and Ring",
-      meaning: "ASL sign expressing care & affection",
-      badge: "ASL",
+      category: "Emotion",
+      hands: "Single Hand",
     },
     {
-      sign: "👍 Thumbs Up",
-      speech: '"Yes, good"',
-      action: "Extend thumb upwards with all fingers curled into a fist",
-      meaning: "Agreement, affirmative, or yes",
-      badge: "Everyday",
+      sign: "✌️ PEACE",
+      speech: '"Peace / Number 2"',
+      action: "Extend Index and Middle in V-shape; fold other fingers",
+      category: "Greeting",
+      hands: "Single Hand",
     },
     {
-      sign: "👎 Thumbs Down",
-      speech: '"No, bad"',
-      action: "Point thumb downwards with all fingers curled into a fist",
-      meaning: "Disagreement, negative, or no",
-      badge: "Everyday",
+      sign: "👌 OK",
+      speech: '"Everything is fine / All good"',
+      action: "Pinch Thumb and Index tips into circle, extend other 3 fingers",
+      category: "Agreement",
+      hands: "Single Hand",
     },
     {
-      sign: "✌️ Peace / Victory",
-      speech: '"Peace"',
-      action: "Extend Index and Middle in a V; fold Ring, Pinky, and Thumb",
-      meaning: "Peace sign or number 2",
-      badge: "Number / Sign",
+      sign: "🛑 STOP",
+      speech: '"Please stop or wait"',
+      action: "Solid closed fist held firmly up indicating stop or wait",
+      category: "Directive",
+      hands: "Single Hand",
     },
     {
-      sign: "👌 OK / All Good",
-      speech: '"Everything is okay"',
-      action: "Pinch Thumb and Index tips together; keep other 3 fingers open",
-      meaning: "Everything is fine / Letter F",
-      badge: "ASL / Universal",
+      sign: "🆘 HELP",
+      speech: '"I need help please"',
+      action: "Left hand flat palm up, Right hand in thumbs-up fist resting on top",
+      category: "Emergency",
+      hands: "Two-Handed",
     },
     {
-      sign: "🤙 Call Me",
-      speech: '"Call me"',
-      action: "Extend Thumb and Pinky; keep Index, Middle, Ring curled",
-      meaning: "Phone call or relaxed greeting",
-      badge: "Everyday",
+      sign: "👉 POINTING",
+      speech: '"Look at that"',
+      action: "Index finger extended forward directing attention, others curled",
+      category: "Directive",
+      hands: "Single Hand",
     },
     {
-      sign: "👉 Pointing",
-      speech: '"Look at this"',
-      action: "Extend only the Index finger; curl all other fingers",
-      meaning: "Attention, direction, or number 1",
-      badge: "Everyday",
+      sign: "🤝 FRIEND",
+      speech: '"We are friends"',
+      action: "Both index fingers curved into hooks linked together at center",
+      category: "Social",
+      hands: "Two-Handed",
     },
     {
-      sign: "✊ Closed Fist",
-      speech: '"Stop or wait"',
-      action: "Curl all fingers into a firm fist",
-      meaning: "Stop, wait, or ASL letter S",
-      badge: "Control",
+      sign: "🤜🤛 TOGETHER",
+      speech: '"Let us work together"',
+      action: "Both hands in thumbs-up fists touching side-by-side at knuckles",
+      category: "Social",
+      hands: "Two-Handed",
     },
     {
-      sign: "🤘 Rock On",
-      speech: '"Rock on"',
-      action: "Extend Index and Pinky; fold Middle, Ring, and Thumb",
-      meaning: "High energy or music gesture",
-      badge: "Expression",
+      sign: "🏠 HOUSE",
+      speech: '"Home / House"',
+      action: "Fingertips of both flat hands touching at an apex forming a roof",
+      category: "Object",
+      hands: "Two-Handed",
+    },
+    {
+      sign: "👐 OPEN",
+      speech: '"Open the door / Welcome"',
+      action: "Both flat hands held apart, palms facing inward opening a wide gate",
+      category: "Action",
+      hands: "Two-Handed",
+    },
+    {
+      sign: "🚪 CLOSE",
+      speech: '"Close / Shut"',
+      action: "Both flat hands brought together until palms touch flat",
+      category: "Action",
+      hands: "Two-Handed",
+    },
+    {
+      sign: "📖 BOOK",
+      speech: '"Book / Reading"',
+      action: "Both flat hands together palms-up, opening outward like a book",
+      category: "Object",
+      hands: "Two-Handed",
+    },
+    {
+      sign: "👏 APPLAUD",
+      speech: '"Congratulations / Well done!"',
+      action: "Both hands raised with open palms waving or clapping",
+      category: "Social",
+      hands: "Two-Handed",
+    },
+    {
+      sign: "🤲 PRAY_RESPECT",
+      speech: '"Respect / Thankfulness"',
+      action: "Both palms pressed flat together at chest in namaste/prayer pose",
+      category: "Courtesy",
+      hands: "Two-Handed",
+    },
+    {
+      sign: "➕ MORE",
+      speech: '"I would like more please"',
+      action: "Fingertips of both flattened-O hands tapping together repeatedly",
+      category: "Action",
+      hands: "Two-Handed",
     },
   ];
 
@@ -82,12 +152,13 @@ export default function GestureGuide() {
         <div className="card-title-group">
           <div className="card-icon">📖</div>
           <div>
-            <h2 className="card-title">Sign Language & Gesture Dictionary</h2>
-            <p className="stat-label">Quick reference guide to test and practice signs</p>
+            <h2 className="card-title">ASL CSV Dataset Reference (300 Samples • 20 Signs)</h2>
+            <p className="stat-label">Model: sign_language_dual_hands_dataset.csv • High accuracy 3D joint matching</p>
           </div>
         </div>
-        <div className="badge">
-          <span>{guideItems.length} Signs Supported</span>
+        <div className="badge connected">
+          <span className="badge-pulse"></span>
+          <span>{guideItems.length} Signs Trained in CSV</span>
         </div>
       </div>
 
@@ -96,13 +167,13 @@ export default function GestureGuide() {
           <div key={idx} className="guide-item-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
               <span className="guide-sign-title">{item.sign}</span>
-              <span className="guide-badge">{item.badge}</span>
+              <span className="guide-badge">{item.hands}</span>
             </div>
             <div className="guide-speech-text">
               🗣️ Translates to: <strong>{item.speech}</strong>
             </div>
-            <div className="guide-action-text">
-              📍 Hand Pose: {item.action}
+            <div className="guide-action-text" style={{ marginTop: "4px" }}>
+              📍 <strong>Pose:</strong> {item.action}
             </div>
           </div>
         ))}

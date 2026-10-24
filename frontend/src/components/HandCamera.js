@@ -4,15 +4,22 @@ import React, { useEffect, useRef, useState } from "react";
 import { loadMediaPipeScripts, HAND_CONNECTIONS } from "@/lib/mediapipe";
 import { extractPositions, detectGesture } from "@/lib/gestureDetector";
 
-export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMirror = true }) {
+export default function HandCamera({
+  onPositionsUpdate,
+  onGestureDetected,
+  onSessionResult,
+  isMirror = true,
+}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false); // Controls active finger tracking
   const [errorMessage, setErrorMessage] = useState(null);
   const [fps, setFps] = useState(0);
   const [handsCount, setHandsCount] = useState(0);
+  const [capturedCount, setCapturedCount] = useState(0);
 
   const cameraInstanceRef = useRef(null);
   const handsInstanceRef = useRef(null);
@@ -20,14 +27,22 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
   const frameCountRef = useRef(0);
   const lastUiUpdateRef = useRef(0);
   const handsCountRef = useRef(0);
+  const isPlayingRef = useRef(false);
+
+  const recordedHandPositionsRef = useRef([]);
+  const sessionStartTimeRef = useRef(0);
+  const lastCaptureTimeRef = useRef(0);
+  const lastHandSeenTimeRef = useRef(0);
 
   // Keep latest callbacks in ref to avoid re-triggering effects
   const onPositionsUpdateRef = useRef(onPositionsUpdate);
   const onGestureDetectedRef = useRef(onGestureDetected);
+  const onSessionResultRef = useRef(onSessionResult);
   useEffect(() => {
     onPositionsUpdateRef.current = onPositionsUpdate;
     onGestureDetectedRef.current = onGestureDetected;
-  }, [onPositionsUpdate, onGestureDetected]);
+    onSessionResultRef.current = onSessionResult;
+  }, [onPositionsUpdate, onGestureDetected, onSessionResult]);
 
   // Initialize MediaPipe Hands and Camera
   const initMediaPipe = async () => {
@@ -43,7 +58,7 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
       });
 
-      // Lower confidence threshold to 0.45 for responsive detection in all lighting
+      // Sensitivity set to 0.45 for instant tracking
       hands.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
@@ -88,7 +103,88 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
     }
   };
 
+  const handlePlay = () => {
+    if (!isRunning) {
+      initMediaPipe();
+    }
+    setIsPlaying(true);
+    isPlayingRef.current = true;
+    recordedHandPositionsRef.current = [];
+    sessionStartTimeRef.current = performance.now();
+    setCapturedCount(0);
+  };
+
+  const handlePause = () => {
+    setIsPlaying(false);
+    isPlayingRef.current = false;
+
+    // Clear canvas when paused
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(null);
+    if (onGestureDetectedRef.current) onGestureDetectedRef.current(null);
+
+    const capturedList = [...recordedHandPositionsRef.current];
+
+    // 1. Send complete captured list to Next.js logger and Azure AI Foundry
+    fetch("/api/log-positions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "PAUSE",
+        hand_positions_list: capturedList,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const sentenceText = data?.full_string || data?.sentence;
+        if (sentenceText && typeof window !== "undefined" && window.speechSynthesis) {
+          const utterance = new SpeechSynthesisUtterance(sentenceText);
+          window.speechSynthesis.speak(utterance);
+        }
+        if (onSessionResultRef.current && sentenceText) {
+          onSessionResultRef.current({
+            sentence: sentenceText,
+            totalFrames: data?.total_frames || capturedList.length,
+            detectedSigns: data?.detected_signs || data?.signs || [],
+            source: "Azure AI Foundry (gpt-5-mini)",
+          });
+        }
+      })
+      .catch((err) => console.warn("AI session trigger error:", err));
+
+    // 2. Save directly into Python backend list in memory and on disk
+    fetch("http://127.0.0.1:8000/api/v1/ai/analyze-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        frames: capturedList,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("Successfully saved in Python list:", data);
+        if (onSessionResultRef.current && data?.meaningful_sentence) {
+          onSessionResultRef.current({
+            sentence: data.meaningful_sentence,
+            totalFrames: data.total_frames || capturedList.length,
+            detectedSigns: data.detected_signs || [],
+            source: data.source || "Python List & Azure AI",
+          });
+        }
+      })
+      .catch(() => {}); // Graceful if backend terminal isn't started yet
+
+    recordedHandPositionsRef.current = [];
+    setCapturedCount(0);
+  };
+
   const stopCamera = () => {
+    handlePause();
     if (cameraInstanceRef.current) {
       cameraInstanceRef.current.stop();
       cameraInstanceRef.current = null;
@@ -106,8 +202,6 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
       stopCamera();
     };
   }, []);
-
-  const lastHandSeenTimeRef = useRef(0);
 
   // Handle MediaPipe inference output
   const onResults = (results) => {
@@ -127,12 +221,17 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
     const width = canvas.width;
     const height = canvas.height;
 
+    // ONLY TRACK FINGERS IF PLAY IS ACTIVE!
+    if (!isPlayingRef.current) {
+      ctx.clearRect(0, 0, width, height);
+      return;
+    }
+
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
     const detectedCount = results.multiHandLandmarks?.length || 0;
 
-    // Update handsCount state only when the count changes
     if (handsCountRef.current !== detectedCount) {
       handsCountRef.current = detectedCount;
       setHandsCount(detectedCount);
@@ -143,12 +242,55 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
       const primaryLandmarks = results.multiHandLandmarks[0];
       const handedness = results.multiHandedness?.[0]?.label || "Right";
 
+      let leftHand = null;
+      let rightHand = null;
+      results.multiHandLandmarks.forEach((lm, idx) => {
+        const hLabel = results.multiHandedness?.[idx]?.label || (idx === 0 ? "Right" : "Left");
+        if (hLabel === "Left") leftHand = lm;
+        else rightHand = lm;
+      });
+      if (!rightHand && primaryLandmarks) rightHand = primaryLandmarks;
+
+      const positions = extractPositions(primaryLandmarks, handedness);
+      const gesture = detectGesture(primaryLandmarks, positions);
+
+      // Capture into chronological finger positions list every 75ms while playing
+      if (now - lastCaptureTimeRef.current >= 75) {
+        lastCaptureTimeRef.current = now;
+        recordedHandPositionsRef.current.push({
+          time_ms: Math.round(now - sessionStartTimeRef.current),
+          wrist: positions?.wrist,
+          fingers: positions?.fingers,
+          metrics: positions?.metrics,
+          gesture: gesture,
+          raw_landmarks: primaryLandmarks.map((p) => ({
+            x: Math.round(p.x * 10000) / 10000,
+            y: Math.round(p.y * 10000) / 10000,
+            z: Math.round(p.z * 10000) / 10000,
+          })),
+          left_landmarks: leftHand
+            ? leftHand.map((p) => ({
+                x: Math.round(p.x * 10000) / 10000,
+                y: Math.round(p.y * 10000) / 10000,
+                z: Math.round(p.z * 10000) / 10000,
+              }))
+            : null,
+          right_landmarks: rightHand
+            ? rightHand.map((p) => ({
+                x: Math.round(p.x * 10000) / 10000,
+                y: Math.round(p.y * 10000) / 10000,
+                z: Math.round(p.z * 10000) / 10000,
+              }))
+            : null,
+          two_handed: detectedCount >= 2,
+          handedness: handedness,
+        });
+        setCapturedCount(recordedHandPositionsRef.current.length);
+      }
+
       // Throttle React UI state updates to every 40ms (~25 FPS) for smooth real-time coordinates
       if (now - lastUiUpdateRef.current >= 40) {
         lastUiUpdateRef.current = now;
-        const positions = extractPositions(primaryLandmarks, handedness);
-        const gesture = detectGesture(primaryLandmarks, positions);
-
         if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(positions);
         if (onGestureDetectedRef.current) onGestureDetectedRef.current(gesture);
       }
@@ -205,7 +347,7 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
         });
       });
     } else {
-      // Only clear coordinates if no hand has been detected for over 800ms to prevent jitter/flicker
+      // Only clear coordinates if no hand has been detected for over 800ms
       if (now - lastHandSeenTimeRef.current > 800) {
         if (now - lastUiUpdateRef.current >= 150) {
           lastUiUpdateRef.current = now;
@@ -223,34 +365,40 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
       <div className="camera-header">
         <div className="camera-title-group">
           <div className="badge-pulse-indicator">
-            <span className={`pulse-dot ${isRunning ? "active" : ""}`}></span>
-            <span>{isRunning ? "Camera Live" : "Camera Inactive"}</span>
+            <span className={`pulse-dot ${isPlaying ? "active" : ""}`}></span>
+            <span>{isPlaying ? "Tracking Active (Live)" : "Tracking Paused"}</span>
           </div>
           <span className="camera-specs">
-            {isRunning ? `${fps} FPS • ${handsCount} Hand(s) Detected` : "Ready"}
+            {isPlaying ? `${fps} FPS • ${capturedCount} Finger Snapshots Captured` : "Click ▶ Play to Track"}
           </span>
         </div>
 
         <div className="camera-buttons">
-          {isRunning ? (
-            <button className="btn btn-secondary btn-sm" onClick={stopCamera} id="btn-stop-camera">
-              ⏸ Pause
+          {isPlaying ? (
+            <button
+              className="btn btn-danger btn-sm"
+              onClick={handlePause}
+              id="btn-pause-tracking"
+              title="Pause tracking and send captured finger positions to AI"
+            >
+              ⏸ Pause &amp; Analyze with AI
             </button>
           ) : (
             <button
               className="btn btn-primary btn-sm"
-              onClick={initMediaPipe}
+              onClick={handlePlay}
               disabled={isLoading}
-              id="btn-start-camera"
+              id="btn-play-tracking"
+              title="Start tracking hand and finger positions"
             >
-              {isLoading ? "Starting..." : "▶ Start Camera"}
+              ▶ Play (Start Tracking Fingers)
             </button>
           )}
         </div>
       </div>
 
       <div className="video-viewport-wrapper">
-        {/* Actual webcam video element with autoPlay */}
+        {/* Actual webcam video element */}
         <video
           ref={videoRef}
           className={`video-feed ${isMirror ? "mirror" : ""}`}
@@ -268,13 +416,27 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
           className={`canvas-overlay ${isMirror ? "mirror" : ""}`}
         />
 
+        {/* Overlay when paused */}
+        {isRunning && !isPlaying && (
+          <div className="camera-overlay-message" style={{ background: "rgba(7, 10, 18, 0.65)" }}>
+            <span style={{ fontSize: "2.5rem" }}>⏸️</span>
+            <p style={{ fontWeight: 700, fontSize: "1.1rem" }}>Finger Tracking is Paused</p>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+              Click <strong>&quot;▶ Play&quot;</strong> above to start capturing finger movements.
+            </span>
+            <button className="btn btn-primary btn-sm" onClick={handlePlay} style={{ marginTop: "8px" }}>
+              ▶ Play (Start Tracking)
+            </button>
+          </div>
+        )}
+
         {/* Loading overlay */}
         {isLoading && (
           <div className="camera-overlay-message">
             <div className="spinner"></div>
             <p>Loading MediaPipe Hand Tracking...</p>
             <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-              Initializing GPU acceleration & WebAssembly
+              Initializing GPU acceleration &amp; WebAssembly
             </span>
           </div>
         )}
@@ -290,10 +452,10 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
           </div>
         )}
 
-        {/* Instructions overlay when no hand is in frame */}
-        {isRunning && handsCount === 0 && (
+        {/* Guide banner when playing but no hand detected yet */}
+        {isRunning && isPlaying && handsCount === 0 && (
           <div className="no-hand-guide">
-            <span>👋 Hold your hand inside camera view to track positions & signs</span>
+            <span>👋 Show your hand to start capturing finger positions...</span>
           </div>
         )}
       </div>
