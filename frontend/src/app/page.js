@@ -20,6 +20,7 @@ import {
   Users,
   Square,
   BookOpen,
+  Search,
 } from "lucide-react";
 import { loadMediaPipeScripts, HAND_CONNECTIONS } from "@/lib/mediapipe";
 import { extractPositions, detectGesture, detectDualHandGesture } from "@/lib/gestureDetector";
@@ -96,10 +97,16 @@ const i18n = {
     toastProfileSaved: "Profile changes successfully saved.",
     resetPhotos: "Reset Team Photos",
     photosResetToast: "All team photos have been reset to default.",
-    dictionaryTitle: "Distinct Sign Language Reference",
+    dictionaryTitle: "Available Signs & Supported Gestures",
+    dictionarySub: "17 distinct biometric sign language gestures recognized with temporal stabilization and voice synthesis.",
     allSigns: "All Signs",
-    dualHandSigns: "Two-Handed Signs",
-    singleHandSigns: "Single-Hand Signs",
+    dualHandSigns: "Two-Handed (Dual)",
+    singleHandSigns: "Single-Hand",
+    searchSignsPlaceholder: "Search signs (e.g. Help, Peace, Love)...",
+    howToPerform: "How to perform:",
+    speechOutputLabel: "Voice Output:",
+    listenPreview: "Listen",
+    activeNowBadge: "Active Now in Camera",
   },
   si: {
     langName: "සිංහල / EN",
@@ -155,10 +162,16 @@ const i18n = {
     toastProfileSaved: "ගිණුමේ තොරතුරු සාර්ථකව යාවත්කාලීන විය.",
     resetPhotos: "කණ්ඩායමේ ඡායාරූප මුල් තත්ත්වයට පත් කරන්න",
     photosResetToast: "කණ්ඩායමේ ඡායාරූප සාර්ථකව පෙරනිමියට සකසන ලදී.",
-    dictionaryTitle: "සංඥා භාෂා මාර්ගෝපදේශය",
+    dictionaryTitle: "හඳුනාගත හැකි සංඥා නාමාවලිය",
+    dictionarySub: "තත්‍ය කාලීනව සහ ස්වභාවික කටහඬින් හඳුනාගත හැකි සුවිශේෂී සංඥා 17.",
     allSigns: "සියලු සංඥා",
     dualHandSigns: "දෑතින්ම කරන සංඥා",
     singleHandSigns: "තනි අතින් කරන සංඥා",
+    searchSignsPlaceholder: "සංඥාවක් සොයන්න (උදා: උදව්, සාමය, ආදරෙයි)...",
+    howToPerform: "සිදුකරන ආකාරය:",
+    speechOutputLabel: "ප්‍රතිදාන කටහඬ:",
+    listenPreview: "අසන්න",
+    activeNowBadge: "කැමරාවෙන් හඳුනාගැනෙමින් පවතී",
   },
 };
 
@@ -182,6 +195,201 @@ const SIGN_SINHALA_MAP = {
   POINTING: { nameSi: "මෙය බලන්න", textSi: "මෙය හොඳින් බලන්න" },
   ROCK_ON: { nameSi: "විශිෂ්ටයි / ජයවේවා", textSi: "ඉතා විශිෂ්ටයි!" },
 };
+
+// ============================================================================
+// 17 DISTINCT MUTUALLY EXCLUSIVE SIGNS CATALOG
+// ============================================================================
+const AVAILABLE_SIGNS = [
+  // 7 Two-Handed Signs
+  {
+    id: "HELP",
+    nameEn: "Help",
+    nameSi: "උදව්",
+    mode: "dual",
+    speechEn: "Please help me",
+    speechSi: "කරුණාකර මට උදව් කරන්න",
+    icon: "🤝",
+    instructionEn: "Rest dominant closed fist with thumb up on non-dominant open flat palm.",
+    instructionSi: "විවෘත අත්ල මත අනෙක් අතේ මිට මොළවා තබන්න.",
+  },
+  {
+    id: "TIME_WATCH",
+    nameEn: "Time / Watch",
+    nameSi: "වේලාව",
+    mode: "dual",
+    speechEn: "What time is it?",
+    speechSi: "දැන් වේලාව කීයද?",
+    icon: "⌚",
+    instructionEn: "Tap dominant index fingertip onto the non-dominant wrist.",
+    instructionSi: "මැණික් කටුව මත අනෙක් අතේ දබරැඟිල්ලෙන් ස්පර්ශ කරන්න.",
+  },
+  {
+    id: "PRAY",
+    nameEn: "Pray / Respect / Namaste",
+    nameSi: "ස්තූතියි / නමස්කාරය",
+    mode: "dual",
+    speechEn: "Thank you, with deep respect",
+    speechSi: "බොහොම ස්තූතියි, ගෞරවය පුද කරමි",
+    icon: "🙏",
+    instructionEn: "Bring both flat palms together vertically facing each other.",
+    instructionSi: "දෑතේ අත්ල දෙක එකිනෙක තබා වඳින ආකාරය.",
+  },
+  {
+    id: "BOOK",
+    nameEn: "Book",
+    nameSi: "පොත",
+    mode: "dual",
+    speechEn: "Open the book",
+    speechSi: "පොත විවෘත කරන්න",
+    icon: "📖",
+    instructionEn: "Join both flat open palms edge-to-edge facing upward like an open book.",
+    instructionSi: "දෑතේ අත්ල දෙක එකට තබා පොතක් විවෘත කරන ආකාරය.",
+  },
+  {
+    id: "HOUSE",
+    nameEn: "House / Roof",
+    nameSi: "නිවස",
+    mode: "dual",
+    speechEn: "House or home",
+    speechSi: "නිවස හෝ ගෙදර",
+    icon: "🏠",
+    instructionEn: "Touch tips of extended angled fingers together forming a peaked roof.",
+    instructionSi: "දෑතේ ඇඟිලි තුඩු එකිනෙක ස්පර්ශ කර වහලයක හැඩය සාදන්න.",
+  },
+  {
+    id: "TOGETHER",
+    nameEn: "Together / Unity",
+    nameSi: "එකමුතුව",
+    mode: "dual",
+    speechEn: "Let us work together",
+    speechSi: "අපි එකමුතුව වැඩ කරමු",
+    icon: "👥",
+    instructionEn: "Bring both closed fists closely side by side touching knuckles.",
+    instructionSi: "දෑතේ මිට මොළවා එකිනෙක ළඟට ගෙන එන්න.",
+  },
+  {
+    id: "MORE",
+    nameEn: "More",
+    nameSi: "තවත්",
+    mode: "dual",
+    speechEn: "Please give me more",
+    speechSi: "කරුණාකර තවත් ටිකක් දෙන්න",
+    icon: "➕",
+    instructionEn: "Pinch fingers of both hands together and tap fingertips together.",
+    instructionSi: "දෑතේ ඇඟිලි එකතු කර තුඩු එකිනෙක ස්පර්ශ කරන්න.",
+  },
+  // 10 Single-Hand Signs
+  {
+    id: "OPEN_HAND",
+    nameEn: "Hello / Open Hand",
+    nameSi: "ආයුබෝවන්",
+    mode: "single",
+    speechEn: "Hello! Have a wonderful day!",
+    speechSi: "ආයුබෝවන්! ඔබට සුබ දවසක්!",
+    icon: "✋",
+    instructionEn: "Open all 5 fingers wide facing forward toward the camera.",
+    instructionSi: "ඇඟිලි පහම විහිදා අත්ල කැමරාව දෙසට දිගු කරන්න.",
+  },
+  {
+    id: "FIST",
+    nameEn: "Stop / Wait",
+    nameSi: "නවත්වන්න / රැඳෙන්න",
+    mode: "single",
+    speechEn: "Stop or stay here",
+    speechSi: "නවත්වන්න හෝ රැඳී සිටින්න",
+    icon: "✊",
+    instructionEn: "Curl all fingers tightly into a solid closed fist.",
+    instructionSi: "සියලු ඇඟිලි නමා තදින් මිට මොළවන්න.",
+  },
+  {
+    id: "THUMBS_UP",
+    nameEn: "Thumbs Up / Yes",
+    nameSi: "ඔව් / ඉතා හොඳයි",
+    mode: "single",
+    speechEn: "Yes, excellent",
+    speechSi: "ඔව්, ඉතා හොඳයි",
+    icon: "👍",
+    instructionEn: "Close fist with thumb pointing straight upward.",
+    instructionSi: "මිට මොළවා මහපටැඟිල්ල ඉහළට ඔසවන්න.",
+  },
+  {
+    id: "THUMBS_DOWN",
+    nameEn: "Thumbs Down / No",
+    nameSi: "නැත / එපා",
+    mode: "single",
+    speechEn: "No, that is not good",
+    speechSi: "නැත, එය සුදුසු නැත",
+    icon: "👎",
+    instructionEn: "Close fist with thumb pointing directly downward.",
+    instructionSi: "මිට මොළවා මහපටැඟිල්ල පහළට යොමු කරන්න.",
+  },
+  {
+    id: "PEACE",
+    nameEn: "Peace / Victory / 2",
+    nameSi: "සාමය / අංක 2",
+    mode: "single",
+    speechEn: "Peace and joy",
+    speechSi: "සාමය සහ සතුට",
+    icon: "✌️",
+    instructionEn: "Extend index and middle fingers in a V shape; curl other fingers.",
+    instructionSi: "දබරැඟිල්ල සහ මැදැඟිල්ල V හැඩයට දිගු කරන්න.",
+  },
+  {
+    id: "ILY",
+    nameEn: "I Love You (ILY)",
+    nameSi: "මම ඔබට ආදරෙයි",
+    mode: "single",
+    speechEn: "I love you with all my heart",
+    speechSi: "මම ඔබට හදවතින්ම ආදරෙයි",
+    icon: "🤟",
+    instructionEn: "Extend thumb, index, and pinky fingers; keep middle and ring curled.",
+    instructionSi: "මහපටැඟිල්ල, දබරැඟිල්ල සහ සුළැඟිල්ල දිගු කරන්න.",
+  },
+  {
+    id: "OK",
+    nameEn: "OK / Perfect",
+    nameSi: "සියල්ල හොඳින්",
+    mode: "single",
+    speechEn: "Everything is going well",
+    speechSi: "සියල්ල හොඳින් සිදු වේ",
+    icon: "👌",
+    instructionEn: "Touch tips of thumb and index into a circle; extend middle, ring, pinky.",
+    instructionSi: "මහපටැඟිල්ල සහ දබරැඟිල්ල තුඩු එකතු කර වටකුරු හැඩය සාදන්න.",
+  },
+  {
+    id: "CALL_ME",
+    nameEn: "Call Me / Shaka",
+    nameSi: "මට අමතන්න",
+    mode: "single",
+    speechEn: "Please give me a call",
+    speechSi: "කරුණාකර මට ඇමතුමක් දෙන්න",
+    icon: "🤙",
+    instructionEn: "Extend thumb and pinky wide apart; keep inner three fingers curled.",
+    instructionSi: "මහපටැඟිල්ල සහ සුළැඟිල්ල දෙපසට දිගු කරන්න.",
+  },
+  {
+    id: "POINTING",
+    nameEn: "Look / Pointing",
+    nameSi: "මෙය බලන්න",
+    mode: "single",
+    speechEn: "Look closely at this",
+    speechSi: "මෙය හොඳින් බලන්න",
+    icon: "👉",
+    instructionEn: "Extend index finger pointing outward; keep all other fingers curled.",
+    instructionSi: "දබරැඟිල්ල පමණක් ඉදිරියට දිගු කරන්න.",
+  },
+  {
+    id: "ROCK_ON",
+    nameEn: "Rock On / Bravo",
+    nameSi: "විශිෂ්ටයි / ජයවේවා",
+    mode: "single",
+    speechEn: "Awesome and rocking!",
+    speechSi: "ඉතා විශිෂ්ටයි!",
+    icon: "🤘",
+    instructionEn: "Extend index and pinky fingers while holding middle & ring with thumb.",
+    instructionSi: "දබරැඟිල්ල සහ සුළැඟිල්ල පමණක් ඉහළට ඔසවන්න.",
+  },
+];
 
 // ============================================================================
 // DEFAULT DATA CONSTANTS
@@ -521,6 +729,10 @@ export default function App() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Available Signs Directory Filter & Search
+  const [signFilter, setSignFilter] = useState("all"); // "all" | "dual" | "single"
+  const [signSearch, setSignSearch] = useState("");
+
   // Video / Canvas / Stabilizer Refs
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -842,6 +1054,18 @@ export default function App() {
         ? siInfo.textSi || activeGesture.speechText
         : activeGesture.speechText
       : "";
+
+  const filteredSigns = AVAILABLE_SIGNS.filter((sign) => {
+    if (signFilter !== "all" && sign.mode !== signFilter) return false;
+    if (!signSearch.trim()) return true;
+    const q = signSearch.toLowerCase();
+    return (
+      sign.nameEn.toLowerCase().includes(q) ||
+      sign.nameSi.toLowerCase().includes(q) ||
+      sign.speechEn.toLowerCase().includes(q) ||
+      sign.speechSi.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div
@@ -1237,6 +1461,162 @@ export default function App() {
               <h4 className="font-black text-slate-900 dark:text-white mb-2">{t.step3Title}</h4>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{t.step3Desc}</p>
             </div>
+          </div>
+        </section>
+
+        {/* =========================================================================
+            AVAILABLE SIGNS / SUPPORTED GESTURES DIRECTORY
+        ========================================================================= */}
+        <section className="space-y-6 pt-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 text-cyan-900 dark:text-cyan-300 text-xs font-bold border border-cyan-300/40">
+                <BookOpen className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <span>{t.dictionaryTitle}</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                {lang === "si" ? "හඳුනාගත හැකි සංඥා 17" : "17 Supported Sign Language Gestures"}
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl">
+                {t.dictionarySub}
+              </p>
+            </div>
+
+            {/* Filter Pills & Search */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={signSearch}
+                  onChange={(e) => setSignSearch(e.target.value)}
+                  placeholder={t.searchSignsPlaceholder}
+                  className={`pl-9 pr-3 py-2 rounded-2xl text-xs font-medium border transition-colors outline-none w-52 sm:w-64 ${
+                    theme === "dark"
+                      ? "bg-slate-900/60 border-purple-900/40 text-white placeholder-slate-500 focus:border-cyan-400"
+                      : "bg-white/80 border-purple-200 text-slate-900 placeholder-slate-400 focus:border-purple-500"
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center p-1 rounded-2xl border backdrop-blur-md bg-purple-900/10 border-purple-300/30">
+                <button
+                  type="button"
+                  onClick={() => setSignFilter("all")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    signFilter === "all"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  {t.allSigns} ({AVAILABLE_SIGNS.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSignFilter("dual")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    signFilter === "dual"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  {t.dualHandSigns}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSignFilter("single")}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    signFilter === "single"
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md"
+                      : "text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-300"
+                  }`}
+                >
+                  {t.singleHandSigns}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredSigns.map((sign) => {
+              const isCurrentlyActive = activeGesture?.gesture === sign.id;
+              const signName = lang === "si" ? sign.nameSi : sign.nameEn;
+              const speechText = lang === "si" ? sign.speechSi : sign.speechEn;
+              const instruction = lang === "si" ? sign.instructionSi : sign.instructionEn;
+
+              return (
+                <div
+                  key={sign.id}
+                  className={`relative rounded-3xl p-5 backdrop-blur-3xl border transition-all duration-300 flex flex-col justify-between ${
+                    isCurrentlyActive
+                      ? "ring-2 ring-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.3)] scale-[1.02] " +
+                        (theme === "dark" ? "bg-[#181a38] border-cyan-400/80" : "bg-cyan-50/90 border-cyan-400")
+                      : theme === "dark"
+                      ? "bg-[#100d27]/70 border-purple-900/30 hover:border-purple-500/50 hover:bg-[#151233]/80"
+                      : "bg-white/80 border-purple-100 shadow-sm hover:shadow-md hover:border-purple-300"
+                  }`}
+                >
+                  <div>
+                    {/* Top row: Icon + Mode Badge */}
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <span className="text-3xl select-none p-2 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+                        {sign.icon}
+                      </span>
+                      <span
+                        className={`text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                          sign.mode === "dual"
+                            ? "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-400/30"
+                            : "bg-cyan-500/15 text-cyan-800 dark:text-cyan-300 border-cyan-400/30"
+                        }`}
+                      >
+                        {sign.mode === "dual"
+                          ? lang === "si" ? "දෑතින්ම (Dual)" : "Two-Handed"
+                          : lang === "si" ? "තනි අතින්" : "Single-Hand"}
+                      </span>
+                    </div>
+
+                    {/* Active In Camera Indicator */}
+                    {isCurrentlyActive && (
+                      <div className="mb-2.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-700 dark:text-cyan-300 text-[10px] font-black border border-cyan-400/40 animate-pulse">
+                        <Sparkles className="w-3 h-3 text-cyan-400" />
+                        <span>{t.activeNowBadge}</span>
+                      </div>
+                    )}
+
+                    {/* Sign Title */}
+                    <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight mb-1">
+                      {signName}
+                    </h4>
+
+                    {/* Instruction */}
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-snug mb-3">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{t.howToPerform} </span>
+                      {instruction}
+                    </p>
+                  </div>
+
+                  {/* Speech output preview box */}
+                  <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-white/10 flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] uppercase font-bold text-slate-400">{t.speechOutputLabel}</p>
+                      <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 truncate">
+                        "{speechText}"
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => speakText(speechText)}
+                      title={t.listenPreview}
+                      className="p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-700 dark:text-purple-300 transition-colors flex-shrink-0"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
