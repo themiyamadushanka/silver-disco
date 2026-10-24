@@ -436,7 +436,7 @@ const DEFAULT_TEAM_MEMBERS = [
     nameSi: "තේමිය මධුශංක",
     degree: "BSC. COMPUTER SCIENCE(UG)",
     institution: "UNIVERSITY OF COLOMBO",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=350&q=80",
+    avatar: "/team/themiya.jpg",
     linkedin: "https://linkedin.com",
     github: "https://github.com/themiyamadushanka",
   },
@@ -720,7 +720,7 @@ export default function App() {
           const matched = parsed.find((p) => p.id === dm.id);
           if (!matched) return dm;
           // If stored avatar was the old unsplash placeholder, upgrade to the official new avatar
-          const isOldPlaceholder = matched.avatar && matched.avatar.includes("unsplash.com/photo-1539571696357");
+          const isOldPlaceholder = matched.avatar && matched.avatar.includes("images.unsplash.com");
           return { ...dm, avatar: isOldPlaceholder ? dm.avatar : (matched.avatar || dm.avatar) };
         });
       }
