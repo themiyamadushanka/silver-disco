@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { loadMediaPipeScripts, HAND_CONNECTIONS } from "@/lib/mediapipe";
 import { extractPositions, detectGesture, detectDualHandGesture } from "@/lib/gestureDetector";
+import { TemporalGestureStabilizer } from "@/lib/gestureStabilizer";
 
 export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGestureDetected, isMirror = true }) {
   const videoRef = useRef(null);
@@ -20,6 +21,7 @@ export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGesture
   const frameCountRef = useRef(0);
   const lastUiUpdateRef = useRef(0);
   const handsCountRef = useRef(0);
+  const stabilizerRef = useRef(new TemporalGestureStabilizer({ stabilizationMs: 320, minConsensusFrames: 6 }));
 
   // Keep latest callbacks in ref to avoid re-triggering effects
   const onPositionsUpdateRef = useRef(onPositionsUpdate);
@@ -157,22 +159,42 @@ export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGesture
       if (now - lastUiUpdateRef.current >= 40) {
         lastUiUpdateRef.current = now;
         const positions = handsPositions[0];
-        let gesture = null;
+        let rawGesture = null;
         if (handsPositions.length >= 2 && results.multiHandLandmarks.length >= 2) {
-          gesture = detectDualHandGesture(
+          rawGesture = detectDualHandGesture(
             results.multiHandLandmarks[0],
             handsPositions[0],
             results.multiHandLandmarks[1],
             handsPositions[1]
           );
         }
-        if (!gesture) {
-          gesture = positions?.gesture || detectGesture(primaryLandmarks, positions);
+        if (!rawGesture) {
+          rawGesture = positions?.gesture || detectGesture(primaryLandmarks, positions);
         }
+
+        // Pass through temporal stabilizer to verify sign before displaying
+        const stabilized = stabilizerRef.current.update(rawGesture, now);
+        const finalGesture = stabilized.gesture
+          ? {
+              ...stabilized.gesture,
+              isVerified: stabilized.isVerified,
+              isVerifying: stabilized.isVerifying,
+              verificationProgress: stabilized.verificationProgress,
+              pendingLabel: stabilized.pendingLabel,
+            }
+          : stabilized.isVerifying
+          ? {
+              gesture: "VERIFYING",
+              label: `Verifying: ${stabilized.pendingLabel || "Sign"}...`,
+              isVerifying: true,
+              verificationProgress: stabilized.verificationProgress,
+              confidence: 50,
+            }
+          : null;
 
         if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(positions);
         if (onHandsUpdateRef.current) onHandsUpdateRef.current(handsPositions);
-        if (onGestureDetectedRef.current) onGestureDetectedRef.current(gesture);
+        if (onGestureDetectedRef.current) onGestureDetectedRef.current(finalGesture);
       }
 
       // Draw all detected hands on canvas at full 60 FPS
@@ -231,6 +253,7 @@ export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGesture
       if (now - lastHandSeenTimeRef.current > 800) {
         if (now - lastUiUpdateRef.current >= 150) {
           lastUiUpdateRef.current = now;
+          stabilizerRef.current.reset();
           if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(null);
           if (onHandsUpdateRef.current) onHandsUpdateRef.current([]);
           if (onGestureDetectedRef.current) onGestureDetectedRef.current(null);

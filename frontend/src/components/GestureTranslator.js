@@ -14,51 +14,43 @@ export default function GestureTranslator({ gesture }) {
   const holdStartRef = useRef(null);
   const committedGestureRef = useRef(null);
 
-  // Gesture Hold & Stabilization:
-  // Requires holding the sign steadily for ~500ms before committing to sentence & voice
+  // Gesture Verification & Commitment:
+  // Commits to voice & sentence only once the sign is verified stable across ~300ms
   useEffect(() => {
-    if (!gesture || gesture.gesture === "Unknown" || gesture.gesture === "TRACKING") {
-      setHoldProgress(0);
-      lastGestureRef.current = null;
-      holdStartRef.current = null;
+    if (
+      !gesture ||
+      !gesture.isVerified ||
+      gesture.gesture === "Unknown" ||
+      gesture.gesture === "TRACKING" ||
+      gesture.gesture === "VERIFYING"
+    ) {
       return;
     }
 
     const currentKey = gesture.gesture;
 
-    if (lastGestureRef.current !== currentKey) {
-      lastGestureRef.current = currentKey;
-      holdStartRef.current = performance.now();
-      setHoldProgress(10);
-    } else if (holdStartRef.current) {
-      const elapsed = performance.now() - holdStartRef.current;
-      const targetTime = 550; // ms
-      const progress = Math.min(100, Math.round((elapsed / targetTime) * 100));
-      setHoldProgress(progress);
+    if (committedGestureRef.current !== currentKey) {
+      committedGestureRef.current = currentKey;
 
-      if (progress >= 100 && committedGestureRef.current !== currentKey) {
-        committedGestureRef.current = currentKey;
-
-        // Auto speak translation
-        if (autoSpeak && gesture.speechText) {
-          speakText(gesture.speechText, { rate: speechRate });
-        }
-
-        // Add to sentence buffer
-        const cleanWord = gesture.speechText || gesture.label;
-        setSentence((prev) => [...prev, cleanWord]);
-
-        // Add to history
-        setHistory((prev) => [
-          {
-            id: Date.now(),
-            label: gesture.label,
-            speechText: gesture.speechText,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-          },
-          ...prev.slice(0, 7),
-        ]);
+      // Auto speak translation
+      if (autoSpeak && gesture.speechText) {
+        speakText(gesture.speechText, { rate: speechRate });
       }
+
+      // Add to sentence buffer
+      const cleanWord = gesture.speechText || gesture.label;
+      setSentence((prev) => [...prev, cleanWord]);
+
+      // Add to history
+      setHistory((prev) => [
+        {
+          id: Date.now(),
+          label: gesture.label,
+          speechText: gesture.speechText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        },
+        ...prev.slice(0, 7),
+      ]);
     }
   }, [gesture, autoSpeak, speechRate]);
 
@@ -119,20 +111,34 @@ export default function GestureTranslator({ gesture }) {
       <div className="active-gesture-banner">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span className="stat-label">Current Sign</span>
-          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+          <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
             {gesture?.isDualHand && (
               <span className="confidence-pill" style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white" }}>
                 👐 Two-Handed
               </span>
             )}
-            {gesture && gesture.confidence > 0 && (
+            {gesture?.isVerifying && (
+              <span className="confidence-pill" style={{ background: "rgba(245, 158, 11, 0.2)", color: "#fbbf24", border: "1px solid rgba(245, 158, 11, 0.4)" }}>
+                ⏳ Verifying ({gesture.verificationProgress || 0}%)
+              </span>
+            )}
+            {gesture?.isVerified && (
+              <span className="confidence-pill" style={{ background: "rgba(16, 185, 129, 0.2)", color: "#34d399", border: "1px solid rgba(16, 185, 129, 0.4)" }}>
+                ✓ Verified
+              </span>
+            )}
+            {gesture && gesture.confidence > 0 && !gesture.isVerifying && (
               <span className="confidence-pill">{gesture.confidence}% Match</span>
             )}
           </div>
         </div>
 
         <div className="gesture-display-title">
-          {gesture ? gesture.label : "Show hand to translate..."}
+          {gesture
+            ? gesture.isVerifying
+              ? `⏳ Verifying: ${gesture.pendingLabel || gesture.label}...`
+              : gesture.label
+            : "Show hand to translate..."}
         </div>
 
         {gesture?.meaning && (
@@ -141,17 +147,17 @@ export default function GestureTranslator({ gesture }) {
           </div>
         )}
 
-        {/* Hold Confirmation Bar */}
-        {holdProgress > 0 && (
+        {/* Hold & Verification Confirmation Bar */}
+        {gesture?.isVerifying && (
           <div style={{ marginTop: "12px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>
-              <span>Confirming Sign...</span>
-              <span>{holdProgress}%</span>
+              <span>Verifying Sign Stability...</span>
+              <span>{gesture.verificationProgress || 0}%</span>
             </div>
             <div className="progress-bar-bg">
               <div
                 className="progress-bar-fill hold-fill"
-                style={{ width: `${holdProgress}%` }}
+                style={{ width: `${gesture.verificationProgress || 0}%` }}
               ></div>
             </div>
           </div>
