@@ -228,20 +228,7 @@ export default function GestureTranslator({ gesture }) {
         </div>
       </div>
 
-      {/* Recent Translation Feed */}
-      {history.length > 0 && (
-        <div style={{ marginTop: "16px" }}>
-          <div className="stat-label" style={{ marginBottom: "8px" }}>Translation History</div>
-          <div className="history-feed">
-            {history.map((item) => (
-              <div key={item.id} className="history-item">
-                <span className="history-text">{item.label}</span>
-                <span className="history-time">{item.timestamp}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
