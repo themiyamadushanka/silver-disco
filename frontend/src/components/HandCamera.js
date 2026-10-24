@@ -18,6 +18,16 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
   const handsInstanceRef = useRef(null);
   const lastTimeRef = useRef(performance.now());
   const frameCountRef = useRef(0);
+  const lastUiUpdateRef = useRef(0);
+  const handsCountRef = useRef(0);
+
+  // Keep latest callbacks in ref to avoid re-triggering effects
+  const onPositionsUpdateRef = useRef(onPositionsUpdate);
+  const onGestureDetectedRef = useRef(onGestureDetected);
+  useEffect(() => {
+    onPositionsUpdateRef.current = onPositionsUpdate;
+    onGestureDetectedRef.current = onGestureDetected;
+  }, [onPositionsUpdate, onGestureDetected]);
 
   // Initialize MediaPipe Hands and Camera
   const initMediaPipe = async () => {
@@ -33,11 +43,12 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
       });
 
+      // Lower confidence threshold to 0.45 for responsive detection in all lighting
       hands.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
-        minDetectionConfidence: 0.65,
-        minTrackingConfidence: 0.65,
+        minDetectionConfidence: 0.45,
+        minTrackingConfidence: 0.45,
       });
 
       hands.onResults(onResults);
@@ -45,8 +56,16 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
 
       const camera = new window.Camera(videoRef.current, {
         onFrame: async () => {
-          if (videoRef.current && handsInstanceRef.current) {
-            await handsInstanceRef.current.send({ image: videoRef.current });
+          if (
+            videoRef.current &&
+            videoRef.current.readyState >= 2 &&
+            handsInstanceRef.current
+          ) {
+            try {
+              await handsInstanceRef.current.send({ image: videoRef.current });
+            } catch (err) {
+              console.warn("MediaPipe send frame error:", err);
+            }
           }
         },
         width: 640,
@@ -88,11 +107,14 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
     };
   }, []);
 
+  const lastHandSeenTimeRef = useRef(0);
+
   // Handle MediaPipe inference output
   const onResults = (results) => {
+    const now = performance.now();
+
     // Calculate FPS
     frameCountRef.current += 1;
-    const now = performance.now();
     if (now - lastTimeRef.current >= 1000) {
       setFps(frameCountRef.current);
       frameCountRef.current = 0;
@@ -108,21 +130,31 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-      setHandsCount(results.multiHandLandmarks.length);
+    const detectedCount = results.multiHandLandmarks?.length || 0;
 
-      // Process first primary hand for tracking & gesture recognition
+    // Update handsCount state only when the count changes
+    if (handsCountRef.current !== detectedCount) {
+      handsCountRef.current = detectedCount;
+      setHandsCount(detectedCount);
+    }
+
+    if (detectedCount > 0) {
+      lastHandSeenTimeRef.current = now;
       const primaryLandmarks = results.multiHandLandmarks[0];
       const handedness = results.multiHandedness?.[0]?.label || "Right";
 
-      const positions = extractPositions(primaryLandmarks, handedness);
-      const gesture = detectGesture(primaryLandmarks, positions);
+      // Throttle React UI state updates to every 40ms (~25 FPS) for smooth real-time coordinates
+      if (now - lastUiUpdateRef.current >= 40) {
+        lastUiUpdateRef.current = now;
+        const positions = extractPositions(primaryLandmarks, handedness);
+        const gesture = detectGesture(primaryLandmarks, positions);
 
-      if (onPositionsUpdate) onPositionsUpdate(positions);
-      if (onGestureDetected) onGestureDetected(gesture);
+        if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(positions);
+        if (onGestureDetectedRef.current) onGestureDetectedRef.current(gesture);
+      }
 
-      // Draw all detected hands
-      results.multiHandLandmarks.forEach((landmarks, handIdx) => {
+      // Draw all detected hands on canvas at full 60 FPS
+      results.multiHandLandmarks.forEach((landmarks) => {
         // Draw glowing skeletal connections
         ctx.lineWidth = 3.5;
         HAND_CONNECTIONS.forEach(([i, j]) => {
@@ -173,9 +205,14 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
         });
       });
     } else {
-      setHandsCount(0);
-      if (onPositionsUpdate) onPositionsUpdate(null);
-      if (onGestureDetected) onGestureDetected(null);
+      // Only clear coordinates if no hand has been detected for over 800ms to prevent jitter/flicker
+      if (now - lastHandSeenTimeRef.current > 800) {
+        if (now - lastUiUpdateRef.current >= 150) {
+          lastUiUpdateRef.current = now;
+          if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(null);
+          if (onGestureDetectedRef.current) onGestureDetectedRef.current(null);
+        }
+      }
     }
 
     ctx.restore();
@@ -213,10 +250,11 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
       </div>
 
       <div className="video-viewport-wrapper">
-        {/* Actual webcam video element */}
+        {/* Actual webcam video element with autoPlay */}
         <video
           ref={videoRef}
           className={`video-feed ${isMirror ? "mirror" : ""}`}
+          autoPlay
           playsInline
           muted
         />
@@ -226,6 +264,7 @@ export default function HandCamera({ onPositionsUpdate, onGestureDetected, isMir
           ref={canvasRef}
           width={640}
           height={480}
+          style={{ zIndex: 3 }}
           className={`canvas-overlay ${isMirror ? "mirror" : ""}`}
         />
 

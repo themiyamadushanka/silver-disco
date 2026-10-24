@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import HandCamera from "@/components/HandCamera";
 import PositionTracker from "@/components/PositionTracker";
 import GestureTranslator from "@/components/GestureTranslator";
@@ -10,6 +10,85 @@ export default function Home() {
   const [positions, setPositions] = useState(null);
   const [currentGesture, setCurrentGesture] = useState(null);
   const [isMirror, setIsMirror] = useState(true);
+  const [isStreamingToTerminal, setIsStreamingToTerminal] = useState(false);
+  const [wsConnected, setWsConnected] = useState(false);
+
+  const socketRef = useRef(null);
+
+  // Manage WebSocket connection to FastAPI backend terminal stream
+  useEffect(() => {
+    if (!isStreamingToTerminal) {
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+      setWsConnected(false);
+      return;
+    }
+
+    const wsUrl = "ws://127.0.0.1:8000/api/v1/ws/hand-stream";
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      setWsConnected(true);
+      console.log("WebSocket connected to FastAPI terminal stream.");
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
+      console.log("WebSocket terminal stream disconnected.");
+    };
+
+    ws.onerror = (err) => {
+      console.warn("WebSocket connection error:", err);
+      setWsConnected(false);
+    };
+
+    socketRef.current = ws;
+
+    return () => {
+      ws.close();
+    };
+  }, [isStreamingToTerminal]);
+
+  // Automatically log all finger positions directly to the npm run dev terminal
+  const lastTerminalLogRef = useRef(0);
+  useEffect(() => {
+    if (!positions) return;
+    const now = Date.now();
+    if (now - lastTerminalLogRef.current >= 400) {
+      lastTerminalLogRef.current = now;
+      fetch("/api/log-positions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          wrist: positions.wrist,
+          fingers: positions.fingers,
+          metrics: positions.metrics,
+          gesture: currentGesture,
+          handedness: positions.handedness,
+        }),
+      }).catch(() => {});
+    }
+  }, [positions, currentGesture]);
+
+  // Send coordinates over WebSocket whenever positions or gesture update
+  useEffect(() => {
+    if (
+      isStreamingToTerminal &&
+      socketRef.current &&
+      socketRef.current.readyState === WebSocket.OPEN &&
+      positions
+    ) {
+      const payload = {
+        wrist: positions.wrist,
+        fingers: positions.fingers,
+        metrics: positions.metrics,
+        gesture: currentGesture,
+      };
+      socketRef.current.send(JSON.stringify(payload));
+    }
+  }, [positions, currentGesture, isStreamingToTerminal]);
 
   return (
     <div>
@@ -26,12 +105,22 @@ export default function Home() {
 
           <div className="header-actions">
             <button
+              className={`btn btn-sm ${isStreamingToTerminal ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => setIsStreamingToTerminal((prev) => !prev)}
+              id="btn-stream-terminal"
+              title="Stream live coordinates to FastAPI terminal"
+            >
+              💻 {isStreamingToTerminal ? (wsConnected ? "Terminal Stream: Active" : "Connecting Terminal...") : "Stream to Terminal: Off"}
+            </button>
+
+            <button
               className="btn btn-secondary btn-sm"
               onClick={() => setIsMirror((prev) => !prev)}
               id="btn-toggle-mirror"
             >
               🔄 {isMirror ? "Mirror: On" : "Mirror: Off"}
             </button>
+
             <div className={`badge ${positions ? "connected" : ""}`}>
               <span className="badge-pulse"></span>
               <span>{positions ? "Hand Tracking Active" : "Waiting for Hand"}</span>

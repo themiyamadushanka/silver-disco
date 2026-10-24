@@ -27,15 +27,15 @@ export default function PositionTracker({ positions }) {
     );
   }
 
-  const { handedness, fingers, wrist, metrics } = positions;
+  const { handedness = "Right", fingers = {}, wrist = {}, metrics = {} } = positions;
 
   const keyPoints = [
     { name: "Wrist (Root)", color: "#10b981", data: wrist, extended: null },
-    { name: "Thumb Tip", color: "#f59e0b", data: fingers.thumb.tip, extended: fingers.thumb.extended },
-    { name: "Index Tip", color: "#06b6d4", data: fingers.index.tip, extended: fingers.index.extended },
-    { name: "Middle Tip", color: "#6366f1", data: fingers.middle.tip, extended: fingers.middle.extended },
-    { name: "Ring Tip", color: "#a855f7", data: fingers.ring.tip, extended: fingers.ring.extended },
-    { name: "Pinky Tip", color: "#f43f5e", data: fingers.pinky.tip, extended: fingers.pinky.extended },
+    { name: "Thumb Tip", color: "#f59e0b", data: fingers?.thumb?.tip, extended: fingers?.thumb?.extended },
+    { name: "Index Tip", color: "#06b6d4", data: fingers?.index?.tip, extended: fingers?.index?.extended },
+    { name: "Middle Tip", color: "#6366f1", data: fingers?.middle?.tip, extended: fingers?.middle?.extended },
+    { name: "Ring Tip", color: "#a855f7", data: fingers?.ring?.tip, extended: fingers?.ring?.extended },
+    { name: "Pinky Tip", color: "#f43f5e", data: fingers?.pinky?.tip, extended: fingers?.pinky?.extended },
   ];
 
   return (
