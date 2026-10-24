@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { loadMediaPipeScripts, HAND_CONNECTIONS } from "@/lib/mediapipe";
-import { extractPositions, detectGesture } from "@/lib/gestureDetector";
+import { extractPositions, detectGesture, detectDualHandGesture } from "@/lib/gestureDetector";
 
 export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGestureDetected, isMirror = true }) {
   const videoRef = useRef(null);
@@ -157,7 +157,18 @@ export default function HandCamera({ onPositionsUpdate, onHandsUpdate, onGesture
       if (now - lastUiUpdateRef.current >= 40) {
         lastUiUpdateRef.current = now;
         const positions = handsPositions[0];
-        const gesture = positions?.gesture || detectGesture(primaryLandmarks, positions);
+        let gesture = null;
+        if (handsPositions.length >= 2 && results.multiHandLandmarks.length >= 2) {
+          gesture = detectDualHandGesture(
+            results.multiHandLandmarks[0],
+            handsPositions[0],
+            results.multiHandLandmarks[1],
+            handsPositions[1]
+          );
+        }
+        if (!gesture) {
+          gesture = positions?.gesture || detectGesture(primaryLandmarks, positions);
+        }
 
         if (onPositionsUpdateRef.current) onPositionsUpdateRef.current(positions);
         if (onHandsUpdateRef.current) onHandsUpdateRef.current(handsPositions);

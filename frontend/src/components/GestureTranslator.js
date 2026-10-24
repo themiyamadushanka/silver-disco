@@ -119,9 +119,16 @@ export default function GestureTranslator({ gesture }) {
       <div className="active-gesture-banner">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span className="stat-label">Current Sign</span>
-          {gesture && gesture.confidence > 0 && (
-            <span className="confidence-pill">{gesture.confidence}% Match</span>
-          )}
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            {gesture?.isDualHand && (
+              <span className="confidence-pill" style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white" }}>
+                👐 Two-Handed
+              </span>
+            )}
+            {gesture && gesture.confidence > 0 && (
+              <span className="confidence-pill">{gesture.confidence}% Match</span>
+            )}
+          </div>
         </div>
 
         <div className="gesture-display-title">
