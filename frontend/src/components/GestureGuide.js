@@ -3,16 +3,40 @@
 import React, { useState } from "react";
 
 export default function GestureGuide() {
-  const [activeFilter, setActiveFilter] = useState("all"); // "all", "dual", "single"
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const guideItems = [
-    // --- TWO-HANDED SIGNS ---
+    // --- TWO-HANDED SIGNS (17) ---
     {
       sign: "🆘 Help (Two-Handed)",
       speech: '"I need help please"',
       action: "Left flat palm facing up; Right thumbs-up fist resting on top",
       meaning: "ASL sign for help: fist on flat palm base",
       badge: "Emergency",
+      isDual: true,
+    },
+    {
+      sign: "🛑 Stop / Chop (Two-Handed)",
+      speech: '"Stop right now"',
+      action: "Left flat palm horizontal; Right flat hand chopping down onto it",
+      meaning: "ASL sign for stop: sharp chop on open palm",
+      badge: "Directives",
+      isDual: true,
+    },
+    {
+      sign: "⏱️ Time / Watch (Two-Handed)",
+      speech: '"What time is it?"',
+      action: "Right index finger pointing and tapping the back of the left wrist",
+      meaning: "Universal sign for time: tapping wrist watch",
+      badge: "Everyday",
+      isDual: true,
+    },
+    {
+      sign: "❤️ Heart / Love (Two-Handed)",
+      speech: '"With all my heart, I love you"',
+      action: "Both index fingers and thumbs curved meeting into a heart shape",
+      meaning: "Two-handed heart shape expressing deep love",
+      badge: "Emotion",
       isDual: true,
     },
     {
@@ -45,6 +69,22 @@ export default function GestureGuide() {
       action: "Both flat hands angled inward; fingertips touching at a peak",
       meaning: "ASL sign for house: triangular roof apex",
       badge: "Everyday",
+      isDual: true,
+    },
+    {
+      sign: "🟰 Same / Equal (Two-Handed)",
+      speech: '"It is the same, equal"',
+      action: "Both index fingers pointing horizontally towards each other",
+      meaning: "ASL sign for same: index fingers held parallel",
+      badge: "Concepts",
+      isDual: true,
+    },
+    {
+      sign: "👨‍👩‍👧 Family (Two-Handed)",
+      speech: '"Family"',
+      action: "Both hands in 'OK' pinch shape touching at fingertips",
+      meaning: "ASL sign for family: 'F' handshapes circling and touching",
+      badge: "Social",
       isDual: true,
     },
     {
@@ -104,13 +144,37 @@ export default function GestureGuide() {
       isDual: true,
     },
 
-    // --- SINGLE-HAND SIGNS ---
+    // --- SINGLE-HAND SIGNS (13) ---
     {
       sign: "🖐️ Open Palm / Wave",
       speech: '"Hello! Greetings!"',
       action: "Extend all 5 fingers upright facing the camera",
       meaning: "Universal friendly greeting",
       badge: "Greeting",
+      isDual: false,
+    },
+    {
+      sign: "💧 Water (ASL W)",
+      speech: '"I would like some water please"',
+      action: "Extend Index, Middle, Ring (Letter W) near your chin",
+      meaning: "ASL sign for water: tapping letter W to chin",
+      badge: "Needs",
+      isDual: false,
+    },
+    {
+      sign: "🤫 Be Quiet / Shh",
+      speech: '"Please be quiet"',
+      action: "Extend only Index finger vertically near your mouth",
+      meaning: "Universal gesture for silence and listening",
+      badge: "Social",
+      isDual: false,
+    },
+    {
+      sign: "🤏 A Little Bit",
+      speech: '"Just a little bit"',
+      action: "Pinch thumb and index close together, other fingers relaxed",
+      meaning: "Expressing a small amount or pinch",
+      badge: "Everyday",
       isDual: false,
     },
     {
@@ -183,22 +247,6 @@ export default function GestureGuide() {
       action: "Curl all fingers into a firm fist",
       meaning: "Stop, wait, or ASL letter S",
       badge: "Control",
-      isDual: false,
-    },
-    {
-      sign: "🤘 Rock On",
-      speech: '"Rock on"',
-      action: "Extend Index and Pinky; fold Middle, Ring, and Thumb",
-      meaning: "High energy, concerts, or enthusiasm",
-      badge: "Expression",
-      isDual: false,
-    },
-    {
-      sign: "✋ Four Fingers",
-      speech: '"Number four or letter B"',
-      action: "Extend 4 fingers upright; fold thumb across palm",
-      meaning: "Number 4 or ASL Letter B",
-      badge: "Number",
       isDual: false,
     },
   ];

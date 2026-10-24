@@ -123,7 +123,7 @@ export function extractPositions(landmarks, handedness = "Right") {
 export function detectGesture(landmarks, positions) {
   if (!landmarks || !positions) return { gesture: "Unknown", label: "Scanning Hand...", confidence: 0 };
 
-  const { fingers, metrics } = positions;
+  const { fingers, metrics, wrist } = positions;
   const { thumb, index, middle, ring, pinky } = fingers;
   const thumbTip = landmarks[LANDMARK.THUMB_TIP];
   const wristPt = landmarks[LANDMARK.WRIST];
@@ -164,7 +164,19 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 4. "Letter L / Gun Shape": Thumb + Index extended at 90 degrees
+  // 4. "Water (ASL W at Chin)": Letter W (Index+Middle+Ring) elevated near chin
+  if (!thumb.extended && index.extended && middle.extended && ring.extended && !pinky.extended && wrist.y < 0.52) {
+    return {
+      gesture: "WATER",
+      label: "Water 💧 (ASL W)",
+      speechText: "I would like some water please",
+      meaning: "ASL sign for water: tapping letter W to the chin",
+      confidence: 94,
+      isDualHand: false,
+    };
+  }
+
+  // 5. "Letter L / Angle": Thumb + Index extended at 90 degrees
   if (thumb.extended && index.extended && !middle.extended && !ring.extended && !pinky.extended) {
     return {
       gesture: "LETTER_L",
@@ -176,7 +188,31 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 5. "Rock On / Horns": Index + Pinky extended, Thumb, Middle, Ring curled
+  // 6. "Quiet / Shh": Index extended upright near mouth/chin region
+  if (!thumb.extended && index.extended && !middle.extended && !ring.extended && !pinky.extended && wrist.y < 0.50) {
+    return {
+      gesture: "QUIET",
+      label: "Be Quiet / Shh 🤫",
+      speechText: "Please be quiet",
+      meaning: "Universal gesture for silence and listening",
+      confidence: 93,
+      isDualHand: false,
+    };
+  }
+
+  // 7. "Little Bit / Small": Pinching thumb and index very close without full palm open
+  if (metrics.pinchThumbIndex < 8 && metrics.extendedCount <= 2 && !middle.extended) {
+    return {
+      gesture: "LITTLE_BIT",
+      label: "A Little Bit 🤏",
+      speechText: "Just a little bit",
+      meaning: "Expressing a small amount or pinch",
+      confidence: 92,
+      isDualHand: false,
+    };
+  }
+
+  // 8. "Rock On / Horns": Index + Pinky extended, Thumb, Middle, Ring curled
   if (!thumb.extended && index.extended && !middle.extended && !ring.extended && pinky.extended) {
     return {
       gesture: "ROCK_ON",
@@ -188,7 +224,7 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 6. "OK Sign": Thumb & Index pinch together, Middle, Ring, Pinky extended
+  // 9. "OK Sign": Thumb & Index pinch together, Middle, Ring, Pinky extended
   if (metrics.pinchThumbIndex < 7 && middle.extended && ring.extended && pinky.extended) {
     return {
       gesture: "OK",
@@ -200,7 +236,7 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 7. "Pointing / Look There": Only Index extended
+  // 10. "Pointing / Look There": Only Index extended
   if (!thumb.extended && index.extended && !middle.extended && !ring.extended && !pinky.extended) {
     return {
       gesture: "POINTING",
@@ -212,7 +248,7 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 8. "Thumbs Up / Good / Yes" vs "Thumbs Down / No"
+  // 11. "Thumbs Up / Good / Yes" vs "Thumbs Down / No"
   if (thumb.extended && !index.extended && !middle.extended && !ring.extended && !pinky.extended) {
     const isUp = thumbTip.y < wristPt.y - 0.08;
     const isDown = thumbTip.y > wristPt.y + 0.08;
@@ -239,7 +275,7 @@ export function detectGesture(landmarks, positions) {
     }
   }
 
-  // 9. "Closed Fist / Stop / S": All fingers curled
+  // 12. "Closed Fist / Stop / S": All fingers curled
   if (metrics.extendedCount === 0) {
     return {
       gesture: "FIST",
@@ -251,7 +287,7 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 10. "Open Hand / Hello / Wave": All 5 fingers extended
+  // 13. "Open Hand / Hello / Wave": All 5 fingers extended
   if (metrics.extendedCount === 5) {
     return {
       gesture: "OPEN_HAND",
@@ -263,7 +299,7 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 11. "Four Fingers / Letter B": Thumb tucked, 4 fingers extended
+  // 14. "Four Fingers / Letter B": Thumb tucked, 4 fingers extended
   if (!thumb.extended && index.extended && middle.extended && ring.extended && pinky.extended) {
     return {
       gesture: "FOUR",
@@ -275,7 +311,7 @@ export function detectGesture(landmarks, positions) {
     };
   }
 
-  // 12. "Three Fingers / Letter W": Index + Middle + Ring extended
+  // 15. "Three Fingers / Letter W": Index + Middle + Ring extended
   if (!thumb.extended && index.extended && middle.extended && ring.extended && !pinky.extended) {
     return {
       gesture: "THREE",
@@ -332,7 +368,51 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 2. PRAY / NAMASTE / RESPECT (Two-Handed): Both hands flat touching vertically
+  // 2. STOP CHOP (Two-Handed ASL): One flat palm horizontal, other flat hand chopping down onto it
+  if (isHand1Base && isHand2Base && wristDist < 0.22) {
+    const tipCrossDist = getDistance(f1.middle?.tip, w2);
+    const tipCrossDistRev = getDistance(f2.middle?.tip, w1);
+    if (tipCrossDist < 0.14 || tipCrossDistRev < 0.14) {
+      return {
+        gesture: "STOP_CHOP",
+        label: "Stop / Cut 🛑 (Two-Handed)",
+        speechText: "Stop right now",
+        meaning: "ASL sign for stop: flat dominant hand sharply chopping onto open flat palm",
+        confidence: 96,
+        isDualHand: true,
+      };
+    }
+  }
+
+  // 3. TIME / WATCH (Two-Handed): Index finger tapping the back of the other wrist
+  const isHand1Index = f1.index?.extended && m1.extendedCount === 1;
+  const isHand2Index = f2.index?.extended && m2.extendedCount === 1;
+  if ((isHand1Index && getDistance(f1.index?.tip, w2) < 0.13) || (isHand2Index && getDistance(f2.index?.tip, w1) < 0.13)) {
+    return {
+      gesture: "TIME_WATCH",
+      label: "Time / Watch ⏱️ (Two-Handed)",
+      speechText: "What time is it?",
+      meaning: "Universal sign for time: tapping index finger to wrist watch location",
+      confidence: 97,
+      isDualHand: true,
+    };
+  }
+
+  // 4. HEART / LOVE (Two-Handed Finger Heart): Both index fingers and thumbs curved meeting into a heart shape
+  const indexMeetDist = getDistance(f1.index?.tip, f2.index?.tip);
+  const thumbMeetDist = getDistance(f1.thumb?.tip, f2.thumb?.tip);
+  if (indexMeetDist < 0.11 && thumbMeetDist < 0.12 && wristDist < 0.24) {
+    return {
+      gesture: "HEART_LOVE",
+      label: "Heart / Love ❤️ (Two-Handed)",
+      speechText: "With all my heart, I love you",
+      meaning: "Two-handed heart shape formed by fingertips and thumbs",
+      confidence: 98,
+      isDualHand: true,
+    };
+  }
+
+  // 5. PRAY / NAMASTE / RESPECT (Two-Handed): Both hands flat touching vertically
   if (m1.extendedCount >= 4 && m2.extendedCount >= 4 && wristDist < 0.16) {
     const tipDist = getDistance(f1.middle?.tip, f2.middle?.tip);
     if (tipDist < 0.14) {
@@ -347,7 +427,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     }
   }
 
-  // 3. BOOK (Two-Handed ASL): Both flat hands held together opening like pages
+  // 6. BOOK (Two-Handed ASL): Both flat hands held together opening like pages
   if (m1.extendedCount >= 4 && m2.extendedCount >= 4 && wristDist >= 0.10 && wristDist < 0.28) {
     const pinkyDist = getDistance(f1.pinky?.tip, f2.pinky?.tip);
     if (pinkyDist < 0.18) {
@@ -362,7 +442,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     }
   }
 
-  // 4. HOUSE / ROOF (Two-Handed ASL): Fingertips meeting at peak, wrists spread
+  // 7. HOUSE / ROOF (Two-Handed ASL): Fingertips meeting at peak, wrists spread
   if (m1.extendedCount >= 3 && m2.extendedCount >= 3 && wristDist > 0.16) {
     const indexTipDist = getDistance(f1.index?.tip, f2.index?.tip);
     if (indexTipDist < 0.12) {
@@ -377,7 +457,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     }
   }
 
-  // 5. MORE (Two-Handed ASL): Both hands cupped/pinched touching at center
+  // 8. MORE (Two-Handed ASL): Both hands cupped/pinched touching at center
   if (m1.extendedCount <= 2 && m2.extendedCount <= 2) {
     const indexTipDist = getDistance(f1.index?.tip, f2.index?.tip);
     const thumbTipDist = getDistance(f1.thumb?.tip, f2.thumb?.tip);
@@ -393,7 +473,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     }
   }
 
-  // 6. TOGETHER (Two-Handed ASL): Both hands thumbs-up touching knuckles
+  // 9. TOGETHER (Two-Handed ASL): Both hands thumbs-up touching knuckles
   if (isHand1ThumbUp && isHand2ThumbUp && wristDist < 0.20) {
     return {
       gesture: "TOGETHER",
@@ -405,7 +485,34 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 7. DOUBLE THUMBS UP: Both hands thumbs-up (Awesome / Great)
+  // 10. SAME / EQUAL (Two-Handed ASL): Both index fingers extended pointing horizontally together
+  if (isHand1Index && isHand2Index && wristDist < 0.22 && getDistance(f1.index?.tip, f2.index?.tip) < 0.15) {
+    return {
+      gesture: "SAME_EQUAL",
+      label: "Same / Equal 🟰 (Two-Handed)",
+      speechText: "It is the same, equal",
+      meaning: "ASL sign for same: index fingers held parallel side-by-side",
+      confidence: 95,
+      isDualHand: true,
+    };
+  }
+
+  // 11. FAMILY (Two-Handed ASL): Both hands in 'OK' pinch shape touching at pinch points
+  if (m1.pinchThumbIndex < 10 && m2.pinchThumbIndex < 10 && m1.extendedCount >= 2 && m2.extendedCount >= 2 && wristDist < 0.24) {
+    const pinchTouchDist = getDistance(f1.thumb?.tip, f2.thumb?.tip);
+    if (pinchTouchDist < 0.14) {
+      return {
+        gesture: "FAMILY",
+        label: "Family 👨‍👩‍👧 (Two-Handed)",
+        speechText: "Family",
+        meaning: "ASL sign for family: 'F' handshapes circling and touching",
+        confidence: 96,
+        isDualHand: true,
+      };
+    }
+  }
+
+  // 12. DOUBLE THUMBS UP: Both hands thumbs-up (Awesome / Great)
   if (isHand1ThumbUp && isHand2ThumbUp) {
     return {
       gesture: "EXCELLENT",
@@ -417,7 +524,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 8. DOUBLE PEACE: Both hands peace signs
+  // 13. DOUBLE PEACE: Both hands peace signs
   const isHand1Peace = !f1.thumb?.extended && f1.index?.extended && f1.middle?.extended && !f1.ring?.extended && !f1.pinky?.extended;
   const isHand2Peace = !f2.thumb?.extended && f2.index?.extended && f2.middle?.extended && !f2.ring?.extended && !f2.pinky?.extended;
   if (isHand1Peace && isHand2Peace) {
@@ -431,7 +538,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 9. DOUBLE I LOVE YOU: Both hands ILY signs
+  // 14. DOUBLE I LOVE YOU: Both hands ILY signs
   const isHand1ILY = f1.thumb?.extended && f1.index?.extended && !f1.middle?.extended && !f1.ring?.extended && f1.pinky?.extended;
   const isHand2ILY = f2.thumb?.extended && f2.index?.extended && !f2.middle?.extended && !f2.ring?.extended && f2.pinky?.extended;
   if (isHand1ILY && isHand2ILY) {
@@ -445,7 +552,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 10. APPLAUD (Deaf Community Applause): Both hands raised high waving
+  // 15. APPLAUD (Deaf Community Applause): Both hands raised high waving
   if (m1.extendedCount >= 4 && m2.extendedCount >= 4 && w1.y < 0.45 && w2.y < 0.45) {
     return {
       gesture: "APPLAUD",
@@ -457,9 +564,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 11. FRIEND (Two-Handed ASL): Both index fingers extended & touching
-  const isHand1Index = f1.index?.extended && m1.extendedCount === 1;
-  const isHand2Index = f2.index?.extended && m2.extendedCount === 1;
+  // 16. FRIEND (Two-Handed ASL): Both index fingers extended & touching
   if (isHand1Index && isHand2Index && getDistance(f1.index?.tip, f2.index?.tip) < 0.12) {
     return {
       gesture: "FRIEND",
@@ -471,7 +576,7 @@ export function detectDualHandGesture(lm1, pos1, lm2, pos2) {
     };
   }
 
-  // 12. OPEN / BIG: Both open hands spread wide apart
+  // 17. OPEN / BIG: Both open hands spread wide apart
   if (m1.extendedCount === 5 && m2.extendedCount === 5 && wristDist > 0.38) {
     return {
       gesture: "OPEN_BIG",
